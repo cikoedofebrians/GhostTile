@@ -12,6 +12,7 @@ struct GhostTileApp: App {
     var body: some Scene {
         WindowGroup {
             TheTilesView()
+//            ContentView()
         }
     }
 }

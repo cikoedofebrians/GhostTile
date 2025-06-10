@@ -12,7 +12,7 @@ import Vision
 struct CameraView: UIViewRepresentable {
     typealias UIViewType = UIView
     @Binding var tiltCounts: [Double]
-    @Binding var rollSide: RollSide
+    @Binding var rollSide: RollSides
     @Binding var ballIndex: Int
     
     func makeUIView(context: Context) -> UIView {
@@ -25,16 +25,19 @@ struct CameraView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        return Coordinator(tiltCounts: $tiltCounts, rollSide: $rollSide, ballIndex: $ballIndex)
+        return Coordinator(tiltCounts: $tiltCounts, rollSides: $rollSide, ballIndex: $ballIndex)
     }
+    
     
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
 
 
+
+
 class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     @Binding var tiltCounts: [Double]
-    @Binding var rollSide: RollSide
+    @Binding var rollSides: RollSides
     @Binding var ballIndex: Int
     let session = AVCaptureSession()
     let previewLayer: AVCaptureVideoPreviewLayer
@@ -43,11 +46,11 @@ class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let videoOutput = AVCaptureVideoDataOutput()
     private let videoQueue = DispatchQueue(label: "videoQueue")
     
-    init(tiltCounts: Binding<[Double]>, rollSide: Binding<RollSide>, ballIndex: Binding<Int>) {
+    init(tiltCounts: Binding<[Double]>, rollSides: Binding<RollSides>, ballIndex: Binding<Int>) {
         previewLayer = AVCaptureVideoPreviewLayer(session: session)
         previewLayer.videoGravity = .resizeAspectFill
         self._tiltCounts = tiltCounts
-        self._rollSide = rollSide
+        self._rollSides = rollSides
         self._ballIndex = ballIndex
         super.init()
         setupSession()
@@ -62,7 +65,6 @@ class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         
         session.addInput(input)
         session.connections.first?.videoOrientation = .landscapeRight
-        
         if session.canAddOutput(videoOutput) {
             videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
             session.addOutput(videoOutput)
@@ -88,7 +90,9 @@ class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let request = VNDetectFaceRectanglesRequest { request, error in
             if let results = request.results as? [VNFaceObservation] {
                 let faceRolls = results.map { face in
+                    print(face.boundingBox.minX)
                     if let roll = face.roll {
+        
                         // Convert radians to degrees
                         let rollInDegrees = roll.doubleValue * (180.0 / .pi)
                         print("Face Roll: \(rollInDegrees) degrees")
@@ -103,32 +107,32 @@ class Coordinator: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 
                 
                 if faceRolls.count == 2 {
-                    if faceRolls[0] < 60 && faceRolls[1] < 60 && self.rollSide == .straight {
-                        print("Left Roll Detected")
-                        self.rollSide = .left
+                    if faceRolls[0] < 60 && faceRolls[1] < 60 && self.rollSides == .straight {
+//                        print("Left Roll Detected")
+                        self.rollSides = .left
                         if self.ballIndex > 0 {
                             withAnimation {
                                 self.ballIndex -= 1
                             }
                         }
-                    } else if faceRolls[0] > 120 && faceRolls[1] > 120 && self.rollSide == .straight {
-                        print("Right Roll Detected")
-                        self.rollSide = .right
+                    } else if faceRolls[0] > 120 && faceRolls[1] > 120 && self.rollSides == .straight {
+//                        print("Right Roll Detected")
+                        self.rollSides = .right
                         if self.ballIndex < 3 {
                             withAnimation {
                                 self.ballIndex += 1
                             }
                             
                         }
-                    } else if faceRolls[0] > 60 && faceRolls[0] < 120 && faceRolls[1] > 60 && faceRolls[1] < 120 && self.rollSide != .straight {
-                        print("Straight Roll Detected")
-                        self.rollSide = .straight
+                    } else if faceRolls[0] > 60 && faceRolls[0] < 120 && faceRolls[1] > 60 && faceRolls[1] < 120 && self.rollSides != .straight {
+//                        print("Straight Roll Detected")
+                        self.rollSides = .straight
                     }
                 }
             }
         }
         
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right, options: [:])
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .down, options: [:])
         
         try? handler.perform([request])
         
