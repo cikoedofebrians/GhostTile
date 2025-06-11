@@ -27,7 +27,9 @@ class TheTiles: SKScene {
         super.init(size: .zero)
         self.anchorPoint = CGPoint(x: 0, y: 0)
         self.scaleMode = .resizeFill
+        self.backgroundColor = .white
     }
+    
     
     required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
@@ -75,10 +77,16 @@ class TheTiles: SKScene {
             let widthX2 = laneEdgeX(laneIndex: currentLaneIndex + 1, y: currentBoxY)
             
             let width = abs(widthX2 - widthX1)
+            // Instead of creating a shape with CGRect offsets
+            let scale = calculateScale(forY: currentBoxY)
+            
+            // Create or update sprite
             if box != nil {
-                let scale = calculateScale(forY: currentBoxY)
-                box?.size = CGSize(width: width, height: baseHeight * scale)
-                box!.position = CGPoint(x: widthX1, y: currentBoxY)
+                // Update existing sprite
+                let newSize = CGSize(width: width, height: baseHeight * scale)
+                box!.size = newSize
+                box!.position = CGPoint(x: widthX1 + width / 2, y: currentBoxY)
+                
                 if box!.position.y < 0 - (baseHeight * scale){
                     box!.removeFromParent()
                     box = nil
@@ -86,21 +94,22 @@ class TheTiles: SKScene {
                     currentLaneIndex = Int.random(in: 0..<numberOfLanes - 1)
                 }
             } else {
-                let scale = calculateScale(forY: currentBoxY)
-                let newBox = SKSpriteNode()
-                newBox.texture = SKTexture(imageNamed: "obstacle_1")
-                newBox.anchorPoint = CGPoint(x: 0, y: 0) // Center anchor point
-                newBox.size = CGSize(width: width, height: baseHeight * scale)
+                // Create new sprite
+                let newSize = CGSize(width: width, height: baseHeight * scale)
+                let newBox = SKSpriteNode(color: .white, size: newSize)
+                
+                // Set anchor point for bottom-center positioning
+                newBox.anchorPoint = CGPoint(x: 0.5, y: 0.0)
                 newBox.alpha = 0
-                newBox.run(
-                    SKAction.fadeAlpha(to: 1, duration: 0.5)
-                )
-                newBox.position = CGPoint(x: widthX1 + width / 2, y: currentBoxY + baseHeight * scale / 2)
+                newBox.run(SKAction.fadeAlpha(to: 1, duration: 0.5))
+                newBox.position = CGPoint(x: widthX1 + width / 2, y: currentBoxY)
+                
+                let textures = (1...3).map { SKTexture(imageNamed: "obstacle_\($0)") }
+                let animation = SKAction.animate(with: textures, timePerFrame: 0.2)
+                let fullAnimation = SKAction.sequence([animation, animation.reversed()])
+                newBox.run(SKAction.repeatForever(fullAnimation))
                 box = newBox
                 addChild(newBox)
-                let textures = (1...4).map { SKTexture(imageNamed: "obstacle_\($0)") }
-                let animation = SKAction.animate(with: textures, timePerFrame: 0.1)
-                newBox.run(SKAction.repeatForever(animation))
             }
             currentBoxY -= 6 * calculateScale(forY: currentBoxY)
         }
@@ -108,7 +117,7 @@ class TheTiles: SKScene {
     
     private func setupCharacter() {
         let char = SKSpriteNode()
-
+        
         char.size = CGSize(width: 200, height: 200)
         char.zPosition = 1
         char.anchorPoint = CGPoint(x: 0, y: 0)
@@ -153,7 +162,7 @@ class TheTiles: SKScene {
             path.move(to: CGPoint(x: size.width / 2 + nearX, y: 0))
             path.addLine(to: CGPoint(x: size.width / 2 + farX, y: size.height - size.height/3))
             line.path = path
-            line.strokeColor = .white
+            line.strokeColor = .black
             line.lineWidth = 2
             line.alpha = 0.3
             line.alpha = 0.3
@@ -163,7 +172,7 @@ class TheTiles: SKScene {
         }
         currentBoxY = size.height - size.height / 3
         let horizonLine = SKShapeNode(rect: CGRect(x: 0, y: size.height - size.height/3, width: size.width, height: 2))
-        horizonLine.fillColor = .white
+        horizonLine.fillColor = .black
         horizonLine.alpha = 0.2
         horizonLine.name = "horizonLine"
         addChild(horizonLine)
@@ -174,7 +183,7 @@ class TheTiles: SKScene {
         if characterLaneIndex < numberOfLanes - 1 {
             characterLaneIndex += 1
             moveCharacter(to: characterLaneIndex)
-
+            
         }
     }
     
@@ -182,7 +191,7 @@ class TheTiles: SKScene {
         if characterLaneIndex > 0 {
             characterLaneIndex -= 1
             moveCharacter(to: characterLaneIndex)
-
+            
         }
     }
     
@@ -213,55 +222,7 @@ class TheTiles: SKScene {
     func crashInverseAnimation() {
         playAnimation(named: "crash_inverse")
     }
-            
+
     
-}
-
-
-struct TheTilesView: View {
-    @StateObject var cameraManager: CameraManager = CameraManager()
-    @State private var gameScene: TheTiles = TheTiles()
-    
-    var body: some View {
-        SpriteView(scene: gameScene)
-            .ignoresSafeArea()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Perspective Runner")
-            .navigationBarTitleDisplayMode(.inline)
-            .onChange(of: cameraManager.lastRollSide) { oldValue, newValue in
-                if oldValue != newValue {
-                    switch newValue {
-                    case .left:
-                        gameScene.moveLeft()
-                    case .right:
-                        gameScene.moveRight()
-                    default:
-                        break
-                    }
-                }
-            }
-            .onChange(of: cameraManager.faceRollSide) { oldValue, newValue in
-                guard newValue.count == 2,
-                      let first = newValue.first,
-                      let second = newValue.last else { return }
-                
-                if first == .none && second == .right || first == .right && second == .none {
-                    gameScene.rightAnimation()
-                } else if first == .none && second == .left || first == .left && second == .none {
-                    gameScene.leftAnimation()
-                } else if first == .right && second == .left {
-                    gameScene.crashAnimation()
-                } else if first == .left && second == .right {
-                    gameScene.crashInverseAnimation()
-                } else if first == .none && second == .none {
-                    gameScene.idleAnimation()
-                }
-            }
-    }
-}
-
-
-#Preview {
-    TheTilesView()
 }
 
