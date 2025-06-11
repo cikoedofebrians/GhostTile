@@ -21,13 +21,16 @@ class TheTiles: SKScene {
     var characterLaneIndex: Int = 0
     var currentBoxY: CGFloat = 0
     var character: SKSpriteNode? = nil
-    var initialTouch: CGPoint?
+    
+    private var mouthFront: SKSpriteNode?
+    private var mouthBack: SKSpriteNode?
+    private var mouthStage: Int = 0
     
     override init() {
         super.init(size: .zero)
         self.anchorPoint = CGPoint(x: 0, y: 0)
         self.scaleMode = .resizeFill
-        self.backgroundColor = .white
+        self.backgroundColor = .black
     }
     
     
@@ -35,6 +38,24 @@ class TheTiles: SKScene {
         super.init(coder: aDecoder)
         self.anchorPoint = CGPoint(x: 0, y: 0)
         self.scaleMode = .resizeFill
+    }
+    
+    private func setupMouths() {
+
+            let mouthNodeFront = SKSpriteNode(imageNamed: "top_mouth")
+            mouthNodeFront.zPosition = -1
+            mouthNodeFront.setScale(0.45)
+            mouthNodeFront.position = CGPoint(x: size.width / 2, y: size.height / 3)
+            addChild(mouthNodeFront)
+            mouthFront = mouthNodeFront
+            
+            let mouthNodeBack = SKSpriteNode(imageNamed: "bottom_mouth")
+            mouthNodeBack.zPosition = 3
+            mouthNodeBack.setScale(0.45)
+            mouthNodeBack.position = CGPoint(x: size.width / 2, y: size.height - size.height / 3 - 100)
+            addChild(mouthNodeBack)
+            mouthBack = mouthNodeBack
+        
     }
     
     func laneEdgeX(laneIndex: Int, y: CGFloat) -> CGFloat {
@@ -48,10 +69,15 @@ class TheTiles: SKScene {
         let t = (y - startY) / (endY - startY)
         return startX + (endX - startX) * t
     }
+
     
     override func didMove(to view: SKView) {
         setupPerspectiveLines()
         setupCharacter()
+        setupMouths()
+
+        let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
+        view.addGestureRecognizer(tap)
     }
     
     
@@ -69,6 +95,36 @@ class TheTiles: SKScene {
         let scale = slope * y + intercept
         
         return scale
+    }
+    
+    func advanceMouthStage() {
+        guard let mouthFront = mouthFront, let mouthBack = mouthBack else { return }
+        mouthStage += 1
+        if mouthStage > 2 { mouthStage = 0 }
+        
+        let scale: CGFloat
+        let yOffset: CGFloat
+        
+        switch mouthStage {
+        case 0:
+            scale = 0.6
+            yOffset = -280
+        case 1:
+            scale = 0.8
+            yOffset = -400
+        case 2:
+            scale = 1.0
+            yOffset = -550
+        default:
+            scale = 0.6
+            yOffset = -280
+        }
+        
+        let newY = size.height - size.height / 3 + yOffset
+        let move = SKAction.move(to: CGPoint(x: size.width / 2, y: newY), duration: 0.2)
+        let resize = SKAction.scale(to: scale, duration: 0.2)
+        mouthFront.run(SKAction.group([move, resize]))
+        mouthBack.run(SKAction.group([move, resize]))
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -162,7 +218,7 @@ class TheTiles: SKScene {
             path.move(to: CGPoint(x: size.width / 2 + nearX, y: 0))
             path.addLine(to: CGPoint(x: size.width / 2 + farX, y: size.height - size.height/3))
             line.path = path
-            line.strokeColor = .black
+            line.strokeColor = .white
             line.lineWidth = 2
             line.alpha = 0.3
             line.alpha = 0.3
@@ -172,7 +228,7 @@ class TheTiles: SKScene {
         }
         currentBoxY = size.height - size.height / 3
         let horizonLine = SKShapeNode(rect: CGRect(x: 0, y: size.height - size.height/3, width: size.width, height: 2))
-        horizonLine.fillColor = .black
+        horizonLine.fillColor = .white
         horizonLine.alpha = 0.2
         horizonLine.name = "horizonLine"
         addChild(horizonLine)
@@ -211,6 +267,7 @@ class TheTiles: SKScene {
         playAnimation(named: "right")
     }
     
+    
     func leftAnimation() {
         playAnimation(named: "left")
     }
@@ -222,7 +279,15 @@ class TheTiles: SKScene {
     func crashInverseAnimation() {
         playAnimation(named: "crash_inverse")
     }
-
+    
     
 }
 
+
+extension SKView {
+    @objc func handleMouthTap(_ sender: UITapGestureRecognizer) {
+        if let scene = self.scene as? TheTiles {
+            scene.advanceMouthStage()
+        }
+    }
+}
