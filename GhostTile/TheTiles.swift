@@ -11,7 +11,7 @@ import SwiftUI
 
 class TheTiles: SKScene {
     let numberOfLanes = 4
-    let baseHeight: CGFloat = 100
+    let baseHeight: CGFloat = 120
     let laneWidth: CGFloat = 160.0
     var lanes: [SKShapeNode] = []
     var box: SKSpriteNode? = nil
@@ -21,6 +21,13 @@ class TheTiles: SKScene {
     var characterLaneIndex: Int = 0
     var currentBoxY: CGFloat = 0
     var character: SKSpriteNode? = nil
+    var scoreLabel: SKLabelNode?
+    var scoreValueLabel: SKLabelNode?
+    var scoreValueBackground: SKShapeNode?
+    var scoreValueContainer: SKNode?
+    var timer: Timer?
+    var totalTime: Double = 0
+    var score: Int = 0
     
     private var mouthFront: SKSpriteNode?
     private var mouthBack: SKSpriteNode?
@@ -40,21 +47,73 @@ class TheTiles: SKScene {
         self.scaleMode = .resizeFill
     }
     
+    private func setupTimer() {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            totalTime += 0.2
+            score += Int(1 * totalTime)
+            if let scoreValueLabel = self.scoreValueLabel, let scoreValueBackground = self.scoreValueBackground, let scoreLabel = scoreLabel, let scoreValueContainer = scoreValueContainer {
+                scoreValueLabel.text = "\(score)"
+                
+                let backgroundSize = CGSize(width: scoreValueLabel.frame.size.width + 48, height: scoreValueLabel.frame.size.height + 24)
+                let centeredRect = CGRect(x: -backgroundSize.width/2, y: -backgroundSize.height/2, width: backgroundSize.width, height: backgroundSize.height)
+                scoreValueBackground.path = CGPath(roundedRect: centeredRect, cornerWidth: 8, cornerHeight: 8, transform: nil)
+                scoreValueContainer.position = CGPoint(x: size.width - backgroundSize.width / 2 - 32, y: size.height - backgroundSize.height / 2 - scoreLabel.frame.size.height - 32)
+            }
+        }
+    }
+    
+    private func setupScore() {
+        let scoreTitleLabel = SKLabelNode(text: "Score")
+        scoreTitleLabel.fontSize = 36
+        scoreTitleLabel.fontName = "Arial-SemiBoldMT"
+        scoreLabel = scoreTitleLabel
+        let scoreValLabel = SKLabelNode(text: "\(score)")
+        
+        scoreValLabel.fontSize = 48
+        scoreValLabel.fontColor = .white
+        scoreValLabel.fontName = "Arial-BoldMT"
+        
+        scoreValueLabel = scoreValLabel
+        
+        scoreValLabel.verticalAlignmentMode = .center
+        scoreValLabel.horizontalAlignmentMode = .center
+        let backgroundSize = CGSize(width: scoreValLabel.frame.size.width + 48, height: scoreValLabel.frame.size.height + 24)
+        let background = SKShapeNode(rectOf: backgroundSize, cornerRadius: 8)
+        scoreValueBackground = background
+        
+        background.fillColor = .red
+        background.strokeColor = .clear
+        
+        let scoreValContainer = SKNode()
+        scoreValueContainer = scoreValContainer
+        scoreValContainer.addChild(background)
+        scoreValContainer.addChild(scoreValLabel)
+        
+        
+        addChild(scoreTitleLabel)
+        addChild(scoreValContainer)
+        
+        scoreTitleLabel.zPosition = 10
+        scoreValContainer.zPosition = 10
+        scoreTitleLabel.position = CGPoint(x: size.width - scoreTitleLabel.frame.size.width / 2 - 32,  y: size.height - scoreTitleLabel.frame.size.height / 2 - 32)
+        scoreValContainer.position = CGPoint(x: size.width - backgroundSize.width / 2 - 32, y: size.height - backgroundSize.height / 2 - scoreTitleLabel.frame.size.height - 32)
+    }
+    
     private func setupMouths() {
-
-            let mouthNodeFront = SKSpriteNode(imageNamed: "top_mouth")
-            mouthNodeFront.zPosition = -1
-            mouthNodeFront.setScale(0.45)
-            mouthNodeFront.position = CGPoint(x: size.width / 2, y: size.height / 3)
-            addChild(mouthNodeFront)
-            mouthFront = mouthNodeFront
-            
-            let mouthNodeBack = SKSpriteNode(imageNamed: "bottom_mouth")
-            mouthNodeBack.zPosition = 3
-            mouthNodeBack.setScale(0.45)
-            mouthNodeBack.position = CGPoint(x: size.width / 2, y: size.height - size.height / 3 - 100)
-            addChild(mouthNodeBack)
-            mouthBack = mouthNodeBack
+        let mouthNodeFront = SKSpriteNode(imageNamed: "top_mouth")
+        mouthNodeFront.zPosition = -1
+        mouthNodeFront.setScale(0.45)
+        mouthNodeFront.position = CGPoint(x: size.width / 2, y: size.height / 3)
+        addChild(mouthNodeFront)
+        mouthFront = mouthNodeFront
+        
+        let mouthNodeBack = SKSpriteNode(imageNamed: "bottom_mouth")
+        mouthNodeBack.zPosition = 3
+        mouthNodeBack.setScale(0.45)
+        mouthNodeBack.position = CGPoint(x: size.width / 2, y: size.height - size.height / 3 - 100)
+        addChild(mouthNodeBack)
+        mouthBack = mouthNodeBack
         
     }
     
@@ -69,13 +128,16 @@ class TheTiles: SKScene {
         let t = (y - startY) / (endY - startY)
         return startX + (endX - startX) * t
     }
-
+    
     
     override func didMove(to view: SKView) {
         setupPerspectiveLines()
         setupCharacter()
         setupMouths()
-
+        setupScore()
+        setupTimer()
+        
+        
         let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
         view.addGestureRecognizer(tap)
     }
@@ -140,6 +202,7 @@ class TheTiles: SKScene {
             if box != nil {
                 // Update existing sprite
                 let newSize = CGSize(width: width, height: baseHeight * scale)
+                print(newSize)
                 box!.size = newSize
                 box!.position = CGPoint(x: widthX1 + width / 2, y: currentBoxY)
                 
@@ -291,3 +354,8 @@ extension SKView {
         }
     }
 }
+
+
+#Preview(body: {
+    TheTilesView()
+})
