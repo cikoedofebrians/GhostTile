@@ -8,6 +8,7 @@
 import SwiftUI
 import SpriteKit
 
+
 struct TheTilesView: View {
     @StateObject var cameraManager: CameraManager = CameraManager()
     @State private var gameScene: TheTiles = TheTiles()
@@ -48,7 +49,9 @@ struct TheTilesView: View {
                 }
             }
     }
+   
 }
+
 
 #Preview {
     TheTilesView()
