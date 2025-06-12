@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-enum RollSide {
+enum RollSides {
     case left
     case right
     case straight
@@ -15,7 +15,7 @@ enum RollSide {
 struct ContentView: View {
     @State var ballIndex: Int = 0
     @State var tiltCounts: [Double] = []
-    @State var rollSide: RollSide = .straight
+    @State var rollSide: RollSides = RollSides.straight
     
     var body: some View {
         ZStack {

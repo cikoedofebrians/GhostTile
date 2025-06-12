@@ -70,13 +70,13 @@ class TheTiles: SKScene {
     }
     
     override func didMove(to view: SKView) {
-            setupPerspectiveLines()
-            setupCharacter()
-            setupMouths()
-
-            let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
-            view.addGestureRecognizer(tap)
-        }
+        setupPerspectiveLines()
+        setupCharacter()
+        setupMouths()
+        
+        let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
+        view.addGestureRecognizer(tap)
+    }
     
     func calculateScale(forY y: CGFloat) -> CGFloat {
         let y1: CGFloat = size.height - size.height / 3
@@ -144,10 +144,10 @@ class TheTiles: SKScene {
                     [0, 2, 3],
                     [1, 2, 3]
                 ]
-
+                
                 let maxBoxCount: Int
                 let minBoxCount: Int
-
+                
                 switch totalElapsedTime {
                 case 0..<20:
                     minBoxCount = 1
@@ -162,7 +162,7 @@ class TheTiles: SKScene {
                     minBoxCount = 3
                     maxBoxCount = 3
                 }
-
+                
                 let possibleCombinations = allCombinations.filter {
                     $0.count >= minBoxCount && $0.count <= maxBoxCount
                 }
@@ -174,6 +174,10 @@ class TheTiles: SKScene {
                 
                 guard let chosen = (validCandidates.isEmpty ? candidates : validCandidates).randomElement() else { return }
                 selectedLanes = chosen
+                
+                if !selectedLanes.contains(currentLane) {
+                    selectedLanes[Int.random(in: 0..<selectedLanes.count)] = currentLane
+                }
             }
             
             let y = size.height - size.height / 3
@@ -205,15 +209,13 @@ class TheTiles: SKScene {
             boxSpawnRate = max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration)
         }
         if let character = character {
-            let characterFrame = character.frame
-            
-            for (box, laneIndex, y) in activeBoxes {
+            for (box, laneIndex, _) in activeBoxes {
                 let boxFrame = box.frame
                 let characterFrame = character.frame
-
+                
                 if laneIndex == currentLane {
                     let yOverlap = characterFrame.intersection(boxFrame).height
-
+                    
                     if yOverlap >= collisionThreshold && !isInCollisionCooldown {
                         handleCharacterCrash()
                         isInCollisionCooldown = true
@@ -275,6 +277,8 @@ class TheTiles: SKScene {
         } else {
             character.position.x = charX
         }
+        
+        currentLane = laneIndex
     }
     
     private func setupPerspectiveLines() {
@@ -333,50 +337,63 @@ class TheTiles: SKScene {
     
     
     private func setupMouths() {
-                let mouthNodeFront = SKSpriteNode(imageNamed: "bottom_mouth")
-                mouthNodeFront.zPosition = -1
-                mouthNodeFront.setScale(0.45)
-                mouthNodeFront.position = CGPoint(x: size.width / 2, y: size.height / 3)
-                addChild(mouthNodeFront)
-                mouthFront = mouthNodeFront
-                
-                let mouthNodeBack = SKSpriteNode(imageNamed: "top_mouth")
-                mouthNodeBack.zPosition = 3
-                mouthNodeBack.setScale(0.45)
-                mouthNodeBack.position = CGPoint(x: size.width / 2, y: size.height - size.height / 3 - 100)
-                addChild(mouthNodeBack)
-                mouthBack = mouthNodeBack
-        }
+        let mouthNodeFront = SKSpriteNode(imageNamed: "bottom_mouth")
+        mouthNodeFront.zPosition = 3
+        mouthNodeFront.setScale(0.45)
+        mouthNodeFront.position = CGPoint(x: size.width / 2, y: size.height / 3)
+        addChild(mouthNodeFront)
+        mouthFront = mouthNodeFront
+        
+        let mouthNodeBack = SKSpriteNode(imageNamed: "top_mouth")
+        mouthNodeBack.zPosition = -1
+        mouthNodeBack.setScale(0.45)
+        mouthNodeBack.position = CGPoint(x: size.width / 2, y: size.height - size.height / 3 - 100)
+        addChild(mouthNodeBack)
+        mouthBack = mouthNodeBack
+    }
     
     func advanceMouthStage() {
-            guard let mouthFront = mouthFront, let mouthBack = mouthBack else { return }
-            mouthStage += 1
-            if mouthStage > 2 { mouthStage = 0 }
-            
-            let scale: CGFloat
-            let yOffset: CGFloat
-            
-            switch mouthStage {
-            case 0:
-                scale = 0.6
-                yOffset = -280
-            case 1:
-                scale = 0.8
-                yOffset = -400
-            case 2:
-                scale = 1.0
-                yOffset = -550
-            default:
-                scale = 0.6
-                yOffset = -280
-            }
-            
-            let newY = size.height - size.height / 3 + yOffset
-            let move = SKAction.move(to: CGPoint(x: size.width / 2, y: newY), duration: 0.2)
-            let resize = SKAction.scale(to: scale, duration: 0.2)
-            mouthFront.run(SKAction.group([move, resize]))
-            mouthBack.run(SKAction.group([move, resize]))
+        guard let mouthFront = mouthFront, let mouthBack = mouthBack else { return }
+        mouthStage += 1
+        if mouthStage > 2 { mouthStage = 0 }
+        
+        let scale: CGFloat
+        let yOffset: CGFloat
+        
+        switch mouthStage {
+        case 0:
+            scale = 0.6
+            yOffset = -280
+        case 1:
+            scale = 0.8
+            yOffset = -400
+        case 2:
+            scale = 1.0
+            yOffset = -550
+        default:
+            scale = 0.6
+            yOffset = -280
         }
+        
+        let newY = size.height - size.height / 3 + yOffset
+        let move = SKAction.move(to: CGPoint(x: size.width / 2, y: newY), duration: 0.2)
+        let resize = SKAction.scale(to: scale, duration: 0.2)
+        mouthFront.run(SKAction.group([move, resize]))
+        mouthBack.run(SKAction.group([move, resize]))
+    }
+    
+    private func getCurrentMouthYPosition() -> CGFloat {
+        switch mouthStage {
+        case 0:
+            return size.height - size.height / 3 - 280
+        case 1:
+            return size.height - size.height / 3 - 400
+        case 2:
+            return size.height - size.height / 3 - 550
+        default:
+            return size.height - size.height / 3 - 280
+        }
+    }
     
     func idleAnimation() {
         playAnimation(named: "idle")
