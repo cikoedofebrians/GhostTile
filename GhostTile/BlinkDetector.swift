@@ -40,7 +40,6 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         session.startRunning()
     }
 
-    // MARK: - Frame Processing
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
@@ -66,12 +65,10 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                 blinkStates.append(leftClosed && rightClosed)
             }
 
-            // Update jika hanya 1 wajah (fallback)
             while blinkStates.count < 2 {
                 blinkStates.append(false)
             }
 
-            // Deteksi kedipan transisi open -> close
             if blinkStates[0] && !self.previousEyeState[0] {
                 DispatchQueue.main.async {
                     self.totalBlinks += 1
@@ -104,14 +101,13 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         }
     }
 
-    // MARK: - Eye Detection Helpers
     private func isEyeClosed(_ eye: VNFaceLandmarkRegion2D) -> Bool {
         guard eye.pointCount >= 6 else { return false }
         let points = eye.normalizedPoints
         let vertical = distance(points[1], points[5])
         let horizontal = distance(points[0], points[3])
         let ratio = vertical / horizontal
-        return ratio < 0.2
+        return ratio < 0.3
     }
 
     private func distance(_ p1: CGPoint, _ p2: CGPoint) -> CGFloat {
