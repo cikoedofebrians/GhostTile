@@ -43,6 +43,7 @@ class TheTiles: SKScene {
     var lastCollisionTime: TimeInterval = 0
     let collisionCooldownDuration: TimeInterval = 2.0
     let collisionThreshold: CGFloat = 100
+    var crashOverlay : SKSpriteNode?
     
     override init() {
         super.init(size: .zero)
@@ -73,6 +74,7 @@ class TheTiles: SKScene {
         setupPerspectiveLines()
         setupCharacter()
         setupMouths()
+        setupCrashOverlay()
         
         let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
         view.addGestureRecognizer(tap)
@@ -240,7 +242,15 @@ class TheTiles: SKScene {
         ])
         let repeatBlink = SKAction.repeat(blink, count: 5)
         character.run(repeatBlink, withKey: "blink")
+        
+        crashOverlay?.alpha = 0
+        crashOverlay?.run(SKAction.fadeAlpha(to: 1.0, duration: 0.3))
+        
+        let wait = SKAction.wait(forDuration: 1.5)
+        let fadeOut = SKAction.fadeAlpha(to: 0, duration: 0.5)
+        crashOverlay?.run(SKAction.sequence([wait, fadeOut]))
     }
+
     
     private func setupCharacter() {
         let char = SKSpriteNode()
@@ -395,6 +405,16 @@ class TheTiles: SKScene {
         }
     }
     
+    private func setupCrashOverlay() {
+        let overlay = SKSpriteNode(imageNamed: "jumpscare")
+        overlay.size = size
+        overlay.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.zPosition = 999
+        overlay.alpha = 0
+        addChild(overlay)
+        crashOverlay = overlay
+    }
+    
     func idleAnimation() {
         playAnimation(named: "idle")
     }
@@ -422,4 +442,8 @@ extension SKView {
             scene.advanceMouthStage()
         }
     }
+}
+
+#Preview{
+    TheTilesView()
 }
