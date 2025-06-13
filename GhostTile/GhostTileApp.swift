@@ -11,7 +11,7 @@ import SwiftUI
 struct GhostTileApp: App {
     var body: some Scene {
         WindowGroup {
-            TheTilesView()
+            StartGameView()
         }
     }
 }
