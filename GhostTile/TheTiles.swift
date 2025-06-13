@@ -267,7 +267,6 @@ class TheTiles: SKScene {
         playAnimation(named: "right")
     }
     
-    
     func leftAnimation() {
         playAnimation(named: "left")
     }

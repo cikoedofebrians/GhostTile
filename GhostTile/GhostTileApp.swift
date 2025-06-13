@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct GhostTileApp: App {
+    @StateObject private var cameraManager = CameraManager()
     var body: some Scene {
         WindowGroup {
-            TheTilesView()
+            StartGameView(cameraManager: cameraManager)
+//            TheTilesView(cameraManager: cameraManager)
         }
     }
 }

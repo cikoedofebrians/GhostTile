@@ -10,7 +10,7 @@ import SpriteKit
 
 
 struct TheTilesView: View {
-    @StateObject var cameraManager: CameraManager = CameraManager()
+    @ObservedObject var cameraManager: CameraManager
     @State private var gameScene: TheTiles = TheTiles()
     
     var body: some View {
@@ -35,24 +35,31 @@ struct TheTilesView: View {
                 guard newValue.count == 2,
                       let first = newValue.first,
                       let second = newValue.last else { return }
-                
-                if first == .none && second == .right || first == .right && second == .none {
+                print("DEBUG: Triggering ANIMATIONNNNNNNN")
+
+                if (first == .none && second == .right) || (first == .right && second == .none) {
+                    print("DEBUG: Triggering right animation")
                     gameScene.rightAnimation()
-                } else if first == .none && second == .left || first == .left && second == .none {
+                } else if (first == .none && second == .left) || (first == .left && second == .none) {
+                    print("DEBUG: Triggering left animation")
                     gameScene.leftAnimation()
                 } else if first == .right && second == .left {
+                    print("DEBUG: Triggering crash animation")
                     gameScene.crashAnimation()
                 } else if first == .left && second == .right {
+                    print("DEBUG: Triggering inverse crash animation")
                     gameScene.crashInverseAnimation()
                 } else if first == .none && second == .none {
+                    print("DEBUG: Triggering idle animation")
                     gameScene.idleAnimation()
                 }
             }
+
     }
    
 }
 
 
 #Preview {
-    TheTilesView()
+    TheTilesView(cameraManager: CameraManager())
 }
