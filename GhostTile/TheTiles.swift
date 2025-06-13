@@ -44,13 +44,15 @@ class TheTiles: SKScene {
     let collisionCooldownDuration: TimeInterval = 2.0
     let collisionThreshold: CGFloat = 100
     
-    // Blink
-    var blinkPopup: SKLabelNode?
+    
+    var blinkChallengeContainer: SKNode?
+    var blinkCounterLabel: SKLabelNode?
     var isBlinkChallengeActive = false
     var blinkCount = 0
     let requiredBlinks = 5
     
     var blinkDetector: BlinkDetector?
+    
     
     var onLeftBlinkDetected: (() -> Void)?
     var onRightBlinkDetected: (() -> Void)?
@@ -91,15 +93,17 @@ class TheTiles: SKScene {
             let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
             view.addGestureRecognizer(tap)
         
+        
         blinkDetector = BlinkDetector()
         blinkDetector?.onLeftBlinkDetected = { [weak self] in
-            self?.registerBlink()
+        self?.registerBlink()
         }
         blinkDetector?.onRightBlinkDetected = { [weak self] in
+           
             self?.registerBlink()
         }
 
-        }
+    }
     
     func calculateScale(forY y: CGFloat) -> CGFloat {
         let y1: CGFloat = size.height - size.height / 3
@@ -138,14 +142,8 @@ class TheTiles: SKScene {
                 box.removeFromParent()
                 activeBoxes.remove(at: index)
             }
-            
-            if !isBlinkChallengeActive && checkAllLanesBlocked() {
-                showBlinkPopup()
-                isBlinkChallengeActive = true
-            }
-
-            
         }
+        
         
         if boxSpawnCooldown <= 0 {
             var selectedLanes: [Int] = []
@@ -155,24 +153,19 @@ class TheTiles: SKScene {
                 lastAllLaneSpawnTime = totalElapsedTime
                 currentSpeedMultiplier = 0.5
                 isSlowedForAllLaneSpawn = true
+                
+                if !isBlinkChallengeActive {
+                    showBlinkPopup()
+                    isBlinkChallengeActive = true
+                }
+
             } else {
                 let numberOfLanesToCover = Int.random(in: 1...3)
                 
                 let possibleCombinations = [
-                    [0, 1, 2],
-                    [0, 1, 3],
-                    [0, 2, 3],
-                    [1, 2, 3],
-                    [0, 1],
-                    [0, 2],
-                    [0, 3],
-                    [1, 2],
-                    [1, 3],
-                    [2, 3],
-                    [0],
-                    [1],
-                    [2],
-                    [3]
+                    [0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3],
+                    [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3],
+                    [0], [1], [2], [3]
                 ]
                 
                 let candidates = possibleCombinations.filter { $0.count == numberOfLanesToCover }
@@ -212,22 +205,18 @@ class TheTiles: SKScene {
             boxSpawnCooldown = boxSpawnRate
             boxSpawnRate = max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration)
         }
+
         if let character = character {
             let characterFrame = character.frame
             for (box, laneIndex, y) in activeBoxes {
                 let boxFrame = box.frame
-                let characterFrame = character.frame
-
                 if laneIndex == currentLane {
                     let yOverlap = characterFrame.intersection(boxFrame).height
-
                     if yOverlap >= collisionThreshold && !isInCollisionCooldown {
                         handleCharacterCrash()
                         isInCollisionCooldown = true
                         lastCollisionTime = currentTime
                         break
-                        
-                        
                     }
                 }
             }
@@ -242,9 +231,7 @@ class TheTiles: SKScene {
         guard isBlinkChallengeActive else { return }
         blinkCount += 1
         
-        if let counterLabel = childNode(withName: "blinkCounterLabel") as? SKLabelNode {
-            counterLabel.text = "Blink \(blinkCount)/\(requiredBlinks)"
-        }
+        blinkCounterLabel?.text = "Blinks: \(blinkCount) / \(requiredBlinks)"
 
         if blinkCount >= requiredBlinks {
             clearAllObstacles()
@@ -253,78 +240,62 @@ class TheTiles: SKScene {
             blinkCount = 0
         }
     }
-
-
-    private func checkAllLanesBlocked() -> Bool {
-        
-        var yGroups: [Int: Set<Int>] = [:]
-        
-        for (_, laneIndex, y) in activeBoxes {
-            let roundedY = Int(y / 50)  // Group by Y level
-            yGroups[roundedY, default: []].insert(laneIndex)
-        }
-        
-        for lanes in yGroups.values {
-            if lanes.count == numberOfLanes {
-                return true
-            }
-        }
-        return false
-    }
-
-
+    
     private func showBlinkPopup() {
-        guard blinkPopup == nil else { return }
+        guard blinkChallengeContainer == nil else { return }
 
-        // Title label
-        let label = SKLabelNode(text: "Blink 5x to clear path!")
-        label.fontName = "AvenirNext-Bold"
-        label.fontSize = 42
-        label.position = CGPoint(x: size.width / 2, y: size.height / 2 + 30)
-        label.zPosition = 100
-        label.alpha = 0.0
-        addChild(label)
         
-        // Counter label
-        let counterLabel = SKLabelNode(text: "Blink 0/\(requiredBlinks)")
-        counterLabel.fontName = "AvenirNext-Bold"
-        counterLabel.fontSize = 36
-        counterLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 30)
-        counterLabel.zPosition = 100
-        counterLabel.alpha = 0.0
-        counterLabel.name = "blinkCounterLabel"
-        addChild(counterLabel)
+        let container = SKNode()
+        container.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        container.zPosition = 100
+        container.alpha = 0.0
+        
+        
+        let titleLabel = SKLabelNode(text: "Blink 5 times to destroy!")
+        titleLabel.fontName = "AvenirNext-Bold"
+        titleLabel.fontSize = 42
+        titleLabel.position = CGPoint(x: 0, y: 30) // Posisi relatif terhadap kontainer
+        container.addChild(titleLabel)
+        
+        
+        let counter = SKLabelNode(text: "Blinks: 0 / \(requiredBlinks)")
+        counter.fontName = "AvenirNext-Bold"
+        counter.fontSize = 36
+        counter.position = CGPoint(x: 0, y: -30) // Posisi relatif terhadap kontainer
+        container.addChild(counter)
 
-        blinkPopup = label
-
-        label.run(SKAction.fadeIn(withDuration: 0.5))
-        counterLabel.run(SKAction.fadeIn(withDuration: 0.5))
+        
+        self.blinkChallengeContainer = container
+        self.blinkCounterLabel = counter
+        
+        addChild(container)
+        container.run(SKAction.fadeIn(withDuration: 0.5))
     }
-
 
     private func hideBlinkPopup() {
-        blinkPopup?.run(SKAction.sequence([
+        guard let container = blinkChallengeContainer else { return }
+        
+        container.run(SKAction.sequence([
             SKAction.fadeOut(withDuration: 0.5),
             SKAction.removeFromParent()
         ]))
-        blinkPopup = nil
         
-        if let counterLabel = childNode(withName: "blinkCounterLabel") {
-            counterLabel.run(SKAction.sequence([
-                SKAction.fadeOut(withDuration: 0.5),
-                SKAction.removeFromParent()
-            ]))
-        }
+        blinkChallengeContainer = nil
+        blinkCounterLabel = nil
     }
-
 
     private func clearAllObstacles() {
         for (box, _, _) in activeBoxes {
-            box.removeFromParent()
+            
+            box.run(SKAction.sequence([
+                SKAction.scale(to: 0, duration: 0.3),
+                SKAction.removeFromParent()
+            ]))
         }
         activeBoxes.removeAll()
     }
-
+    
+    // ... sisa kode yang ga diubah
     
     private func handleCharacterCrash() {
         guard let character = character else { return }
@@ -387,7 +358,6 @@ class TheTiles: SKScene {
             line.path = path
             line.strokeColor = .white
             line.lineWidth = 2
-            line.alpha = 0.3
             line.alpha = 0.3
             line.name = "laneLine"
             lanes.append(line)
@@ -517,6 +487,7 @@ class TheTiles: SKScene {
         playAnimation(named: "crash_inverse")
     }
 }
+
 
 extension SKView {
     @objc func handleMouthTap(_ sender: UITapGestureRecognizer) {

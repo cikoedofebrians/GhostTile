@@ -8,10 +8,8 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     var onRightBlinkDetected: (() -> Void)?
     
     var session = AVCaptureSession()
-    private var previousEyeState: [Bool] = [true, true] // [leftPersonOpen, rightPersonOpen]
-    
-    var totalBlinks = 0
-    var onBlinkCountReached: (() -> Void)? // trigger setelah total blink tertentu
+    private var previousEyeState: [Bool] = [true, true]
+   
 
     override init() {
         super.init()
@@ -71,21 +69,18 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
             if blinkStates[0] && !self.previousEyeState[0] {
                 DispatchQueue.main.async {
-                    self.totalBlinks += 1
-                    print("Left blinked. Total: \(self.totalBlinks)")
                     self.onLeftBlinkDetected?()
                 }
             }
 
             if blinkStates[1] && !self.previousEyeState[1] {
                 DispatchQueue.main.async {
-                    self.totalBlinks += 1
-                    print("Right blinked. Total: \(self.totalBlinks)")
                     self.onRightBlinkDetected?()
                 }
             }
 
-            self.previousEyeState = blinkStates.map { !$0 }
+
+            self.previousEyeState = blinkStates
         }
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored)
@@ -98,7 +93,7 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let vertical = distance(points[1], points[5])
         let horizontal = distance(points[0], points[3])
         let ratio = vertical / horizontal
-        return ratio < 0.3
+        return ratio < 0.05
     }
 
     private func distance(_ p1: CGPoint, _ p2: CGPoint) -> CGFloat {
