@@ -1,21 +1,17 @@
-//
-//  BlinkDetector.swift
-//  GhostTile
-//
-//  Created by Vianna Calista Tamsil on 12/06/25.
-//
-
-
 import Vision
 import AVFoundation
 import UIKit
 
 class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-    var session = AVCaptureSession()
-    var onBlinkDetected: (() -> Void)?
 
-    private var previousLeftOpen = true
-    private var previousRightOpen = true
+    var onLeftBlinkDetected: (() -> Void)?
+    var onRightBlinkDetected: (() -> Void)?
+    
+    var session = AVCaptureSession()
+    private var previousEyeState: [Bool] = [true, true] // [leftPersonOpen, rightPersonOpen]
+    
+    var totalBlinks = 0
+    var onBlinkCountReached: (() -> Void)? // trigger setelah total blink tertentu
 
     override init() {
         super.init()
@@ -41,50 +37,79 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let output = AVCaptureVideoDataOutput()
         output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "cameraQueue"))
         session.addOutput(output)
-
         session.startRunning()
     }
 
+    // MARK: - Frame Processing
     func captureOutput(_ output: AVCaptureOutput,
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let request = VNDetectFaceLandmarksRequest { [weak self] request, error in
-            guard let observations = request.results as? [VNFaceObservation], let face = observations.first else { return }
+            guard let self = self,
+                  let observations = request.results as? [VNFaceObservation],
+                  observations.count >= 2 else { return } // pastikan dua wajah
 
-            guard let landmarks = face.landmarks,
-                  let leftEye = landmarks.leftEye,
-                  let rightEye = landmarks.rightEye else { return }
+            var blinkStates: [Bool] = []
 
-            let leftClosed = self?.isEyeClosed(leftEye) ?? false
-            let rightClosed = self?.isEyeClosed(rightEye) ?? false
-
-            if leftClosed && rightClosed {
-                if self?.previousLeftOpen == true && self?.previousRightOpen == true {
-                    DispatchQueue.main.async {
-                        self?.onBlinkDetected?()
-                    }
+            for face in observations.prefix(2) {
+                guard let landmarks = face.landmarks,
+                      let leftEye = landmarks.leftEye,
+                      let rightEye = landmarks.rightEye else {
+                    blinkStates.append(false)
+                    continue
                 }
-                self?.previousLeftOpen = false
-                self?.previousRightOpen = false
-            } else {
-                self?.previousLeftOpen = true
-                self?.previousRightOpen = true
+
+                let leftClosed = self.isEyeClosed(leftEye)
+                let rightClosed = self.isEyeClosed(rightEye)
+                blinkStates.append(leftClosed && rightClosed)
             }
+
+            // Update jika hanya 1 wajah (fallback)
+            while blinkStates.count < 2 {
+                blinkStates.append(false)
+            }
+
+            // Deteksi kedipan transisi open -> close
+            if blinkStates[0] && !self.previousEyeState[0] {
+                DispatchQueue.main.async {
+                    self.totalBlinks += 1
+                    print("Left blinked. Total: \(self.totalBlinks)")
+                    self.onLeftBlinkDetected?()
+                    self.checkBlinkGoal()
+                }
+            }
+
+            if blinkStates[1] && !self.previousEyeState[1] {
+                DispatchQueue.main.async {
+                    self.totalBlinks += 1
+                    print("Right blinked. Total: \(self.totalBlinks)")
+                    self.onRightBlinkDetected?()
+                    self.checkBlinkGoal()
+                }
+            }
+
+            self.previousEyeState = blinkStates.map { !$0 }
         }
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored)
         try? handler.perform([request])
     }
 
+    private func checkBlinkGoal() {
+        if totalBlinks >= 5 {
+            onBlinkCountReached?()
+            totalBlinks = 0 // reset
+        }
+    }
+
+    // MARK: - Eye Detection Helpers
     private func isEyeClosed(_ eye: VNFaceLandmarkRegion2D) -> Bool {
         guard eye.pointCount >= 6 else { return false }
-        
         let points = eye.normalizedPoints
         let vertical = distance(points[1], points[5])
         let horizontal = distance(points[0], points[3])
-
         let ratio = vertical / horizontal
         return ratio < 0.2
     }
@@ -95,3 +120,4 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         return sqrt(dx*dx + dy*dy)
     }
 }
+

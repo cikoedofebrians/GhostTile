@@ -48,9 +48,13 @@ class TheTiles: SKScene {
     var blinkPopup: SKLabelNode?
     var isBlinkChallengeActive = false
     var blinkCount = 0
-    let requiredBlinks = 10
+    let requiredBlinks = 5
     
     var blinkDetector: BlinkDetector?
+    
+    var onLeftBlinkDetected: (() -> Void)?
+    var onRightBlinkDetected: (() -> Void)?
+    var onBothBlinkDetected: (() -> Void)?
 
 
     
@@ -87,9 +91,12 @@ class TheTiles: SKScene {
             let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
             view.addGestureRecognizer(tap)
         
-            blinkDetector = BlinkDetector()
-            blinkDetector?.onBlinkDetected = { [weak self] in
-                self?.registerBlink()
+        blinkDetector = BlinkDetector()
+        blinkDetector?.onLeftBlinkDetected = { [weak self] in
+            self?.registerBlink()
+        }
+        blinkDetector?.onRightBlinkDetected = { [weak self] in
+            self?.registerBlink()
         }
 
         }
@@ -273,7 +280,7 @@ class TheTiles: SKScene {
         guard blinkPopup == nil else { return }
 
         // Title label
-        let label = SKLabelNode(text: "Blink 10x to clear path!")
+        let label = SKLabelNode(text: "Blink 5x to clear path!")
         label.fontName = "AvenirNext-Bold"
         label.fontSize = 42
         label.position = CGPoint(x: size.width / 2, y: size.height / 2 + 30)
