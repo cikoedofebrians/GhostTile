@@ -74,7 +74,6 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.totalBlinks += 1
                     print("Left blinked. Total: \(self.totalBlinks)")
                     self.onLeftBlinkDetected?()
-                    self.checkBlinkGoal()
                 }
             }
 
@@ -83,7 +82,6 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
                     self.totalBlinks += 1
                     print("Right blinked. Total: \(self.totalBlinks)")
                     self.onRightBlinkDetected?()
-                    self.checkBlinkGoal()
                 }
             }
 
@@ -92,13 +90,6 @@ class BlinkDetector: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .leftMirrored)
         try? handler.perform([request])
-    }
-
-    private func checkBlinkGoal() {
-        if totalBlinks >= 5 {
-            onBlinkCountReached?()
-            totalBlinks = 0 // reset
-        }
     }
 
     private func isEyeClosed(_ eye: VNFaceLandmarkRegion2D) -> Bool {

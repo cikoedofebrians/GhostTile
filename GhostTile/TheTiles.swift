@@ -214,7 +214,6 @@ class TheTiles: SKScene {
         }
         if let character = character {
             let characterFrame = character.frame
-            
             for (box, laneIndex, y) in activeBoxes {
                 let boxFrame = box.frame
                 let characterFrame = character.frame
@@ -243,7 +242,6 @@ class TheTiles: SKScene {
         guard isBlinkChallengeActive else { return }
         blinkCount += 1
         
-        // Update counter label if exists
         if let counterLabel = childNode(withName: "blinkCounterLabel") as? SKLabelNode {
             counterLabel.text = "Blink \(blinkCount)/\(requiredBlinks)"
         }
@@ -258,7 +256,7 @@ class TheTiles: SKScene {
 
 
     private func checkAllLanesBlocked() -> Bool {
-        // Group obstacles by their Y position (rounded to nearest 50 for tolerance)
+        
         var yGroups: [Int: Set<Int>] = [:]
         
         for (_, laneIndex, y) in activeBoxes {
@@ -266,7 +264,6 @@ class TheTiles: SKScene {
             yGroups[roundedY, default: []].insert(laneIndex)
         }
         
-        // Check if any Y group has all 4 lanes
         for lanes in yGroups.values {
             if lanes.count == numberOfLanes {
                 return true
