@@ -21,8 +21,10 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
     var faceRollSide: [RollSide] = []
     
     @Published var faceNods: [Bool] = []
-    private var previousLeftOpen = true
-    private var previousRightOpen = true
+    private var initialNodsPitch: [Double] = []
+    
+    private var previousEyeStates: [Bool] = [false, false]
+    
     
     func adjustCharAnimation(first: RollSide, second: RollSide) {
         if first == .none && second == .right || first == .right && second == .none {
@@ -76,7 +78,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
             videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
             session.addOutput(videoOutput)
         }
-
+        
         startSession()
     }
     
@@ -96,7 +98,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
     
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let request = VNDetectFaceRectanglesRequest { request, error in
+        let faceRectanglesRequest = VNDetectFaceRectanglesRequest { request, error in
             if let results = request.results as? [VNFaceObservation] {
                 let sortFaceRolls = results.sorted { $0.boundingBox.origin.x > $1.boundingBox.origin.x }
                 let limitFaceRolls = sortFaceRolls.prefix(2)
@@ -113,10 +115,9 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     return .none
                 }
                 
-                
-                
                 if self.faceNods.count != limitFaceRolls.count {
                     DispatchQueue.main.async {
+                        self.initialNodsPitch = []
                         self.faceNods = Array(repeating: false, count: limitFaceRolls.count)
                     }
                 }
@@ -125,18 +126,22 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     for (index, face) in limitFaceRolls.enumerated() {
                         if let pitch = face.pitch {
                             let pitchInDegrees = pitch.doubleValue * (180.0 / .pi)
-                            if pitchInDegrees > 10 && !self.faceNods[index] {
-                                DispatchQueue.main.async {
-                                    self.faceNods[index] = true
+                            if self.initialNodsPitch.count < 2 {
+                                self.initialNodsPitch.append(pitchInDegrees)
+                            } else if self.initialNodsPitch.count == self.faceNods.count {
+                                if pitchInDegrees - self.initialNodsPitch[index] > 10 && !self.faceNods[index] {
+                                    DispatchQueue.main.async {
+                                        self.faceNods[index] = true
+                                    }
                                 }
                             }
+                            
                         }
                     }
                 }
                 
                 DispatchQueue.main.async  {
                     if faceRolls.count == 2 {
-                        print("Face Rolls Detected: \(faceRolls)")
                         if self.faceRollSide.count == 2 && (faceRolls[0] != self.faceRollSide[0] || faceRolls[1] != self.faceRollSide[1]) {
                             self.adjustCharAnimation(first: faceRolls[0], second: faceRolls[1])
                         }
@@ -149,23 +154,55 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
             }
         }
         
+        let faceLandmarksRequest = VNDetectFaceLandmarksRequest { request, error in
+            if let results = request.results as? [VNFaceObservation], results.count >= 2 {
+                let limitFaceRolls =  results.prefix(2)
+                var blinkStates: [Bool] = []
+                
+                for face in limitFaceRolls {
+                    guard let landmarks = face.landmarks,
+                          let leftEye = landmarks.leftEye,
+                          let rightEye = landmarks.rightEye else {
+                        blinkStates.append(false)
+                        continue
+                    }
+                    
+                    let leftClosed = self.isEyeClosed(leftEye)
+                    let rightClosed = self.isEyeClosed(rightEye)
+                    blinkStates.append(leftClosed && rightClosed)
+                }
+                
+                
+                while blinkStates.count < 2 {
+                    blinkStates.append(false)
+                }
+                
+                for (index, _) in blinkStates.enumerated() {
+                    if blinkStates[index] != self.previousEyeStates[index] {
+                        DispatchQueue.main.async {
+                            self.delegate?.blinkDetected()
+                        }
+                    }
+                }
+                
+                self.previousEyeStates = blinkStates
+            }
+        }
+        
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .down, options: [:])
         
-        try? handler.perform([request])
+        try? handler.perform([faceLandmarksRequest, faceRectanglesRequest])
     }
-    
     
     private func isEyeClosed(_ eye: VNFaceLandmarkRegion2D) -> Bool {
         guard eye.pointCount >= 6 else { return false }
-        
         let points = eye.normalizedPoints
         let vertical = distance(points[1], points[5])
         let horizontal = distance(points[0], points[3])
-
         let ratio = vertical / horizontal
-        return ratio < 0.2
+        return ratio < 0.05
     }
-
+    
     private func distance(_ p1: CGPoint, _ p2: CGPoint) -> CGFloat {
         let dx = p1.x - p2.x
         let dy = p1.y - p2.y

@@ -22,6 +22,7 @@ struct StartGameView: View {
     @State private var shouldStartGame = false
     
     
+    
     var body: some View {
         if shouldStartGame {
             TilesView(cameraManager: cameraManager)

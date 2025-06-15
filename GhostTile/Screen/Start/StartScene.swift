@@ -176,12 +176,6 @@ class StartScene: SKScene {
     }
     
     
-    
-    
-    
-    
-    
-    
     private func setupPerspectiveLines() {
         for i in 0...numberOfLanes {
             let line = SKShapeNode()
@@ -210,11 +204,11 @@ class StartScene: SKScene {
     }
     
     private func playAnimation(named animationName: String) {
-        guard let character = character else { return }
-        
+        guard let character = character else { return }        
         character.removeAllActions()
         
         let frameRange: [Int]
+        
         
         switch animationName.lowercased() {
         case "startidle":
@@ -236,7 +230,7 @@ class StartScene: SKScene {
         
         let animation = SKAction.animate(with: textures, timePerFrame: 0.1)
         let sequence = SKAction.sequence([animation, animation.reversed()])
-        character.run(SKAction.repeatForever(sequence))
+        character.run(SKAction.repeatForever(sequence), withKey: "startAnimation")
     }
     
     private func checkIfBothPlayersReady(){
