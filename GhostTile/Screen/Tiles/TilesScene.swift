@@ -59,7 +59,7 @@ class Tiles: SKScene {
     let cameraManager: CameraManager
     var hasBlinked: Bool = false
 
-    // Var lama bikin
+    // Var baru bikin
     var collisionCount: Int = 0
     let maxCollisions: Int = 3
     var isGameOver: Bool = false
