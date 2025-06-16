@@ -21,10 +21,10 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
     var faceRollSide: [RollSide] = []
     
     @Published var faceNods: [Bool] = []
+    @Published var totalBlinks: Int = 0
     private var initialNodsPitch: [Double] = []
     
     private var previousEyeStates: [Bool] = [false, false]
-    
     
     func adjustCharAnimation(first: RollSide, second: RollSide) {
         if first == .none && second == .right || first == .right && second == .none {
@@ -139,7 +139,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                         }
                     }
                 }
-                
+                    
                 DispatchQueue.main.async  {
                     if faceRolls.count == 2 {
                         if self.faceRollSide.count == 2 && (faceRolls[0] != self.faceRollSide[0] || faceRolls[1] != self.faceRollSide[1]) {
@@ -159,7 +159,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                 let limitFaceRolls =  results.prefix(2)
                 var blinkStates: [Bool] = []
                 
-                for face in limitFaceRolls {
+                for (index, face) in limitFaceRolls.enumerated() {
                     guard let landmarks = face.landmarks,
                           let leftEye = landmarks.leftEye,
                           let rightEye = landmarks.rightEye else {
@@ -169,21 +169,26 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     
                     let leftClosed = self.isEyeClosed(leftEye)
                     let rightClosed = self.isEyeClosed(rightEye)
-                    blinkStates.append(leftClosed && rightClosed)
+                    if self.previousEyeStates[index] {
+                        blinkStates.append(leftClosed || rightClosed)
+                    } else {
+                        blinkStates.append(leftClosed && rightClosed)
+                    }
                 }
-                
                 
                 while blinkStates.count < 2 {
                     blinkStates.append(false)
                 }
                 
                 for (index, _) in blinkStates.enumerated() {
-                    if blinkStates[index] != self.previousEyeStates[index] {
+                    if blinkStates[index] != self.previousEyeStates[index] && blinkStates[index] {
                         DispatchQueue.main.async {
+                            self.totalBlinks += 1
                             self.delegate?.blinkDetected()
                         }
                     }
                 }
+                print(blinkStates)
                 
                 self.previousEyeStates = blinkStates
             }
@@ -196,6 +201,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
     
     private func isEyeClosed(_ eye: VNFaceLandmarkRegion2D) -> Bool {
         guard eye.pointCount >= 6 else { return false }
+        print(eye.normalizedPoints.count)
         let points = eye.normalizedPoints
         let vertical = distance(points[1], points[5])
         let horizontal = distance(points[0], points[3])
