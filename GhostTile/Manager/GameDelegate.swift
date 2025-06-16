@@ -16,5 +16,6 @@ protocol GameDelegate {
     func crashAnimation()
     func crashInverseAnimation()
     func idleAnimation()
+    func nodDetected()
 }
 
