@@ -644,11 +644,11 @@ extension Tiles: GameDelegate {
     }
     
     func crashAnimation() {
-        playAnimation(named: "crash")
+        playAnimation(named: "inward")
     }
     
     func crashInverseAnimation() {
-        playAnimation(named: "crash_inverse")
+        playAnimation(named: "apart")
     }
 }
 
