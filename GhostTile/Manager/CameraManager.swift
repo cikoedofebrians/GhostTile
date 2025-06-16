@@ -133,12 +133,12 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                                     DispatchQueue.main.async {
                                         self.faceNods[index] = true
                                         
-                                        // tambahin ini
-                                        self.delegate?.nodDetected()
+                                       
+                                        self.delegate?.nodDetected(playerIndex: index) // changed yeaa
+                                       
                                     }
                                 }
                             }
-                            
                         }
                     }
                 }

@@ -15,6 +15,7 @@ protocol GameDelegate {
     func crashInverseAnimation()
     func idleAnimation()
     
-    // gw tambahin ini
-    func nodDetected()
+    
+    func nodDetected(playerIndex: Int) // -> changed yeahh
+    
 }

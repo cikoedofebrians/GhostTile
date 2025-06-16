@@ -1,4 +1,3 @@
-
 //
 //  TheTiles.swift
 //  GhostTile
@@ -60,12 +59,19 @@ class Tiles: SKScene {
     let cameraManager: CameraManager
     var hasBlinked: Bool = false
 
-    // Var baru bikin
+    // Var lama bikin
     var collisionCount: Int = 0
     let maxCollisions: Int = 3
     var isGameOver: Bool = false
     var gameOverNode: SKNode?
     let randomJumpscareImages: [String] = ["jumpscare", "kucing"]
+    
+    // <<< TAMBAHKAN 3 VARIABEL DI BAWAH INI
+    // Variabel untuk melacak status anggukan setiap pemain dan referensi label.
+    var playerOneNodded: Bool = false
+    var playerTwoNodded: Bool = false
+    var restartLabel: SKLabelNode?
+    // <<< AKHIR DARI PENAMBAHAN
     
     let specialJumpscareImage: String = "mouthClosing_dummy"
 
@@ -77,7 +83,7 @@ class Tiles: SKScene {
         blinkNode.zPosition = 1000
         return blinkNode
     }()
-        
+          
     func setupBackgroundMusic() {
 //      if let musicURL = Bundle.main.url(forResource: "backsound", withExtension: "mp3") {
 //          let backgroundMusic = SKAudioNode(url: musicURL)
@@ -213,7 +219,7 @@ class Tiles: SKScene {
         view.addGestureRecognizer(tap)
     }
 
-  
+    
     func setupGame() {
         self.removeAllChildren()
         self.removeAllActions()
@@ -225,6 +231,12 @@ class Tiles: SKScene {
         currentScore = 0
         totalElapsedTime = 0
         activeBoxes.removeAll()
+        
+        // <<< TAMBAHKAN 2 BARIS DI BAWAH INI UNTUK RESET
+        // Mengatur ulang status anggukan untuk ronde permainan berikutnya.
+        playerOneNodded = false
+        playerTwoNodded = false
+        // <<< AKHIR DARI PENAMBAHAN
         
         // Setup scene
         setupBackground()
@@ -438,7 +450,7 @@ class Tiles: SKScene {
             }
         }
     }
-     
+    
 
     
     private func handleCharacterCrash() {
@@ -524,14 +536,15 @@ class Tiles: SKScene {
         finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height / 2)
         gameOverNode?.addChild(finalScoreLabel)
         
-        // Text Nod Your Head to Restart
-        let restartLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
-        restartLabel.text = "Nod Your Head to Restart"
-        restartLabel.fontSize = 40
-        restartLabel.fontColor = .white
-        restartLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.35)
-        gameOverNode?.addChild(restartLabel)
-
+        
+        // Text nyuruh nod
+        let label = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
+        label.text = "Nod Your Head to Restart"
+        label.fontSize = 40
+        label.fontColor = .white
+        label.position = CGPoint(x: size.width / 2, y: size.height * 0.35)
+        self.restartLabel = label
+        gameOverNode?.addChild(self.restartLabel!)
         if let gameOverNode = gameOverNode {
             addChild(gameOverNode)
         }
@@ -542,6 +555,7 @@ class Tiles: SKScene {
             self.isPaused = false
             
             if let view = self.view {
+                // NOTE: Pastikan nama class `StartScene` sudah benar sesuai dengan file Anda
                 let startScene = StartScene()
                 startScene.scaleMode = self.scaleMode
                 
@@ -698,11 +712,36 @@ extension Tiles: GameDelegate {
         
     }
     
-    func nodDetected() {
-        if isGameOver {
+    
+    // logic node 2 orang
+    func nodDetected(playerIndex: Int) {
+        guard isGameOver else { return }
+        
+        if (playerIndex == 0 && playerOneNodded) || (playerIndex == 1 && playerTwoNodded) {
+            return
+        }
+
+        if playerIndex == 0 {
+            playerOneNodded = true
+        } else if playerIndex == 1 {
+            playerTwoNodded = true
+        }
+        
+       
+        if playerOneNodded && playerTwoNodded {
+            
+            restartLabel?.text = "Restarting..."
             restartGame()
+        } else {
+            
+            if playerOneNodded {
+                restartLabel?.text = "Player 1 Ready! Waiting for Player 2..."
+            } else if playerTwoNodded {
+                restartLabel?.text = "Player 2 Ready! Waiting for Player 1..."
+            }
         }
     }
+ 
 
     func moveRight() {
         guard !isGameOver else { return }
@@ -752,13 +791,9 @@ extension SKView {
 }
 
 
-#if canImport(SwiftUI)
-import SwiftUI
-@available(iOS 13.0, *)
 struct TilesView_Preview: PreviewProvider {
     static var previews: some View {
         SpriteView(scene: Tiles(cameraManager: CameraManager()))
             .ignoresSafeArea()
     }
 }
-#endif
