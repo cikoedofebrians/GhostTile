@@ -5,8 +5,6 @@
 //  Created by Ciko Edo Febrian on 13/06/25.
 //
 
-
-
 protocol GameDelegate {
     func moveLeft()
     func moveRight()
@@ -16,5 +14,7 @@ protocol GameDelegate {
     func crashAnimation()
     func crashInverseAnimation()
     func idleAnimation()
+    
+    // gw tambahin ini
+    func nodDetected()
 }
-

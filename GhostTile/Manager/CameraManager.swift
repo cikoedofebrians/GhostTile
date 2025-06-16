@@ -132,6 +132,9 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                                 if pitchInDegrees - self.initialNodsPitch[index] > 10 && !self.faceNods[index] {
                                     DispatchQueue.main.async {
                                         self.faceNods[index] = true
+                                        
+                                        // tambahin ini
+                                        self.delegate?.nodDetected()
                                     }
                                 }
                             }

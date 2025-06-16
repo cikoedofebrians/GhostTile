@@ -1,3 +1,4 @@
+
 //
 //  TheTiles.swift
 //  GhostTile
@@ -56,9 +57,18 @@ class Tiles: SKScene {
     var wallY: CGFloat = 0.0
     var crashOverlay : SKSpriteNode?
     var bulletTimer: Timer?
-//    let cameraManager: CameraManager = CameraManager()
     let cameraManager: CameraManager
     var hasBlinked: Bool = false
+
+    // Var baru bikin
+    var collisionCount: Int = 0
+    let maxCollisions: Int = 3
+    var isGameOver: Bool = false
+    var gameOverNode: SKNode?
+    let randomJumpscareImages: [String] = ["jumpscare", "kucing"]
+    
+    let specialJumpscareImage: String = "mouthClosing_dummy"
+
     let blink: SKSpriteNode = {
         let blinkNode = SKSpriteNode()
         blinkNode.color = .redBlink
@@ -69,11 +79,11 @@ class Tiles: SKScene {
     }()
         
     func setupBackgroundMusic() {
-//        if let musicURL = Bundle.main.url(forResource: "backsound", withExtension: "mp3") {
-//            let backgroundMusic = SKAudioNode(url: musicURL)
-//            backgroundMusic.autoplayLooped = true
-//            addChild(backgroundMusic)
-//        }
+//      if let musicURL = Bundle.main.url(forResource: "backsound", withExtension: "mp3") {
+//          let backgroundMusic = SKAudioNode(url: musicURL)
+//          backgroundMusic.autoplayLooped = true
+//          addChild(backgroundMusic)
+//      }
     }
     
     let background: SKSpriteNode = {
@@ -110,8 +120,14 @@ class Tiles: SKScene {
     }
     
     private func setupAcceleration() {
+        timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
+            // ini buat pastiin timer countnya berhenti pas game over
+            if self.isGameOver {
+                self.timer?.invalidate()
+                return
+            }
             self.scoreAcceleration += 0.01
         }
     }
@@ -191,6 +207,26 @@ class Tiles: SKScene {
     
     override func didMove(to view: SKView) {
         cameraManager.delegate = self
+        setupGame()
+        
+        let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
+        view.addGestureRecognizer(tap)
+    }
+
+  
+    func setupGame() {
+        self.removeAllChildren()
+        self.removeAllActions()
+        
+        // Reset state
+        isGameOver = false
+        collisionCount = 0
+        score = 0
+        currentScore = 0
+        totalElapsedTime = 0
+        activeBoxes.removeAll()
+        
+        // Setup scene
         setupBackground()
         setupPerspectiveLines()
         setupCharacter()
@@ -199,32 +235,10 @@ class Tiles: SKScene {
         setupAcceleration()
         setupCrashOverlay()
         setupBackgroundMusic()
-        
-        let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
-        view.addGestureRecognizer(tap)
     }
     
     func shootBullet() {
-        //        if bulletTimer == nil && isWallSpawned {
-        //            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] timer in
-        //                print("\(timer)")
-        //                guard let self = self else { return }
-        //                if !isWallSpawned {
-        //                    timer.invalidate()
-        //                    bulletTimer = nil
-        //                    return
-        //                }
-        //                guard let character = character else { return }
-        //                let bullet = SKSpriteNode(color: .red, size: CGSize(width: 10, height: 20))
-        //                bullet.anchorPoint = CGPoint(x: 0.5, y: 0.0)
-        //                bullet.position = CGPoint(x: character.position.x + character.size.width / 2, y: character.position.y + character.size.height / 2)
-        //                addChild(bullet)
-        //                let moveAction = SKAction.moveTo(y: size.height - size.height / 3, duration: 1.0)
-        //                bullet.run(moveAction) {
-        //                    bullet.removeFromParent()
-        //                }
-        //            }
-        //        }
+        
     }
     
     func showBlinkEffect() {
@@ -263,7 +277,11 @@ class Tiles: SKScene {
         
         return scale
     }
+
     override func update(_ currentTime: TimeInterval) {
+        // stop up kl gameover
+        guard !isGameOver else { return }
+
         if lanes.count > 1 {
             
             adjustTimer(currentTime: currentTime)
@@ -292,7 +310,7 @@ class Tiles: SKScene {
             }
             if isWallSpawned && !activeBoxes.isEmpty || !isWallSpawned {
                 for (index, boxData) in activeBoxes.enumerated().reversed() {
-                    var (box, laneIndex, y) = boxData
+                    let (box, laneIndex, y) = boxData
                     
                     let scale = calculateScale(forY: y)
                     let widthX1 = laneEdgeX(laneIndex: laneIndex, y: y)
@@ -302,10 +320,10 @@ class Tiles: SKScene {
                     box.size = CGSize(width: width, height: baseHeight * scale)
                     box.position = CGPoint(x: widthX1 + width / 2, y: y)
                     
-                    y -= 6 * scale
-                    activeBoxes[index].y = y
+                    var newY = y - (6 * scale)
+                    activeBoxes[index].y = newY
                     
-                    if y < -box.size.height {
+                    if newY < -box.size.height {
                         box.removeFromParent()
                         activeBoxes.remove(at: index)
                     }
@@ -317,7 +335,6 @@ class Tiles: SKScene {
                 if boxSpawnCooldown <= 0 {
                     var selectedLanes: [Int] = []
                     
-                    //                    if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
                     if totalElapsedTime - lastAllLaneSpawnTime >= 30 && !isWallSpawned {
                         selectedLanes = [0, 1, 2, 3]
                         lastAllLaneSpawnTime = totalElapsedTime
@@ -334,50 +351,21 @@ class Tiles: SKScene {
                         
                     } else  if !isWallSpawned {
                         let numberOfLanesToCover = Int.random(in: 1...3)
-                        let allCombinations: [[Int]] = [
-                            [0],
-                            [1],
-                            [2],
-                            [3],
-                            [0, 1],
-                            [0, 2],
-                            [0, 3],
-                            [1, 2],
-                            [1, 3],
-                            [2, 3],
-                            [0, 1, 2],
-                            [0, 1, 3],
-                            [0, 2, 3],
-                            [1, 2, 3]
-                        ]
+                        let allCombinations: [[Int]] = [[0], [1], [2], [3], [0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3], [0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
                         
-                        let maxBoxCount: Int
                         let minBoxCount: Int
+                        let maxBoxCount: Int
                         
                         switch totalElapsedTime {
-                        case 0..<20:
-                            minBoxCount = 1
-                            maxBoxCount = 2
-                        case 20..<40:
-                            minBoxCount = 1
-                            maxBoxCount = 3
-                        case 40..<60:
-                            minBoxCount = 2
-                            maxBoxCount = 3
-                        default:
-                            minBoxCount = 3
-                            maxBoxCount = 3
+                        case 0..<20: minBoxCount = 1; maxBoxCount = 2
+                        case 20..<40: minBoxCount = 1; maxBoxCount = 3
+                        case 40..<60: minBoxCount = 2; maxBoxCount = 3
+                        default: minBoxCount = 3; maxBoxCount = 3
                         }
                         
-                        let possibleCombinations = allCombinations.filter {
-                            $0.count >= minBoxCount && $0.count <= maxBoxCount
-                        }
-                        
+                        let possibleCombinations = allCombinations.filter { $0.count >= minBoxCount && $0.count <= maxBoxCount }
                         let candidates = possibleCombinations.filter { $0.count == numberOfLanesToCover }
-                        let validCandidates = candidates.filter { candidate in
-                            !Set(candidate).isSubset(of: Set(lastSpawnedLanes))
-                        }
-                        
+                        let validCandidates = candidates.filter { !Set($0).isSubset(of: Set(lastSpawnedLanes)) }
                         guard let chosen = (validCandidates.isEmpty ? candidates : validCandidates).randomElement() else { return }
                         selectedLanes = chosen
                         
@@ -416,30 +404,32 @@ class Tiles: SKScene {
             
             if let character = character {
                 if !activeBoxes.isEmpty {
-                    for (box, laneIndex, _) in activeBoxes {
-                        let boxFrame = box.frame
-                        let characterFrame = character.frame
-                        
+                    for (_, laneIndex, _) in activeBoxes {
                         if laneIndex == currentLane {
-                            let yOverlap = characterFrame.intersection(boxFrame).height
-                            
-                            if yOverlap >= collisionThreshold && !isInCollisionCooldown {
-                                handleCharacterCrash()
-                                isInCollisionCooldown = true
-                                lastCollisionTime = currentTime
-                                break
+                            // Cek collision berdasarkan frame
+                            if let boxNode = activeBoxes.first(where: { $0.laneIndex == laneIndex })?.node {
+                                let boxFrame = boxNode.frame
+                                let characterFrame = character.frame
+                                if boxFrame.intersects(characterFrame) && !isInCollisionCooldown {
+                                    
+                                    let yOverlap = characterFrame.intersection(boxFrame).height
+                                    if yOverlap >= collisionThreshold {
+                                        handleCharacterCrash()
+                                        isInCollisionCooldown = true
+                                        lastCollisionTime = currentTime
+                                        break
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                else if activeBoxes.isEmpty && isWallSpawned {
+                } else if activeBoxes.isEmpty && isWallSpawned {
                     let yOverlap = character.frame.intersection(wall.frame).height
                     if yOverlap >= collisionThreshold && !isInCollisionCooldown {
                         handleCharacterCrash()
                         isInCollisionCooldown = true
                         lastCollisionTime = currentTime
                     }
-                    
                 }
                 
                 if isInCollisionCooldown && currentTime - lastCollisionTime >  max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration)  + 0.5{
@@ -448,24 +438,117 @@ class Tiles: SKScene {
             }
         }
     }
+     
+
     
     private func handleCharacterCrash() {
         guard let character = character else { return }
         
-        let blink = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.0, duration: 0.25),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.25)
-        ])
-        let repeatBlink = SKAction.repeat(blink, count: 7)
-        character.run(repeatBlink, withKey: "blink")
+        collisionCount += 1
         
-        crashOverlay?.alpha = 0
-        crashOverlay?.run(SKAction.fadeAlpha(to: 1.0, duration: 0.2))
-        
-        let wait = SKAction.wait(forDuration: 1.5)
-        let fadeOut = SKAction.fadeAlpha(to: 0, duration: 0.5)
-        crashOverlay?.run(SKAction.sequence([wait, fadeOut]))
+        // khusus tabrakan ke tiga yang mouth closing
+        if collisionCount >= maxCollisions {
+            showJumpscare(imageName: specialJumpscareImage)
+            
+            // ini jeda biar mulus tp ga terlalu signifikan si
+            let waitAction = SKAction.wait(forDuration: 1.0)
+            let gameOverAction = SKAction.run { [weak self] in
+                self?.gameOver()
+            }
+            self.run(SKAction.sequence([waitAction, gameOverAction]))
+            
+        } else {
+            // else -> collision pertama & ke dua
+            
+            // random gambar jumpscare
+            if let randomImage = randomJumpscareImages.randomElement() {
+                showJumpscare(imageName: randomImage)
+            }
+            
+            // Karakter berkedip
+            let blink = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.0, duration: 0.25),
+                SKAction.fadeAlpha(to: 1.0, duration: 0.25)
+            ])
+            let repeatBlink = SKAction.repeat(blink, count: 4)
+            character.run(repeatBlink)
+        }
     }
+
+    private func showJumpscare(imageName: String) {
+        guard let overlay = crashOverlay else { return }
+        
+        overlay.texture = SKTexture(imageNamed: imageName)
+        
+        overlay.removeAllActions()
+        overlay.alpha = 0
+        overlay.run(SKAction.sequence([
+            SKAction.fadeAlpha(to: 1.0, duration: 0.1),
+            SKAction.wait(forDuration: 0.5),
+            SKAction.fadeAlpha(to: 0.0, duration: 0.5)
+        ]))
+    }
+
+    private func gameOver() {
+        isGameOver = true
+        timer?.invalidate() // stop timer skor
+        // self.isPaused = true
+
+        character?.removeAllActions()
+                for boxData in activeBoxes {
+                    boxData.node.removeAllActions()
+                }
+        
+        // Display total score
+        gameOverNode = SKNode()
+        gameOverNode?.zPosition = 2000
+
+        let overlay = SKSpriteNode(color: .black, size: self.size)
+        overlay.alpha = 0.8
+        overlay.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
+        gameOverNode?.addChild(overlay)
+
+        // Game Over Text
+        let gameOverLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+        gameOverLabel.text = "GAME OVER"
+        gameOverLabel.fontSize = 90
+        gameOverLabel.fontColor = .red
+        gameOverLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
+        gameOverNode?.addChild(gameOverLabel)
+        
+        // Text Score (Di game over)
+        let finalScoreLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
+        finalScoreLabel.text = "Your Score: \(score)"
+        finalScoreLabel.fontSize = 60
+        finalScoreLabel.fontColor = .white
+        finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        gameOverNode?.addChild(finalScoreLabel)
+        
+        // Text Nod Your Head to Restart
+        let restartLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
+        restartLabel.text = "Nod Your Head to Restart"
+        restartLabel.fontSize = 40
+        restartLabel.fontColor = .white
+        restartLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.35)
+        gameOverNode?.addChild(restartLabel)
+
+        if let gameOverNode = gameOverNode {
+            addChild(gameOverNode)
+        }
+    }
+    
+
+    func restartGame() {
+            self.isPaused = false
+            
+            if let view = self.view {
+                let startScene = StartScene()
+                startScene.scaleMode = self.scaleMode
+                
+                let transition = SKTransition.fade(withDuration: 0.8)
+                view.presentScene(startScene, transition: transition)
+            }
+        }
     
     private func setupCharacter() {
         let char = SKSpriteNode()
@@ -565,7 +648,7 @@ class Tiles: SKScene {
         
         let scale: CGFloat
         let yOffset: CGFloat
-            
+                
         switch mouthStage {
         case 0:
             scale = 0.6
@@ -589,7 +672,8 @@ class Tiles: SKScene {
     }
     
     private func setupCrashOverlay() {
-        let overlay = SKSpriteNode(imageNamed: "jumpscare")
+        
+        let overlay = SKSpriteNode()
         overlay.size = size
         overlay.position = CGPoint(x: size.width / 2, y: size.height / 2)
         overlay.zPosition = 999
@@ -600,14 +684,10 @@ class Tiles: SKScene {
     
     private func getCurrentMouthYPosition() -> CGFloat {
         switch mouthStage {
-        case 0:
-            return size.height - size.height / 3 - 280
-        case 1:
-            return size.height - size.height / 3 - 400
-        case 2:
-            return size.height - size.height / 3 - 550
-        default:
-            return size.height - size.height / 3 - 280
+        case 0: return size.height - size.height / 3 - 280
+        case 1: return size.height - size.height / 3 - 400
+        case 2: return size.height - size.height / 3 - 550
+        default: return size.height - size.height / 3 - 280
         }
     }
 }
@@ -618,7 +698,14 @@ extension Tiles: GameDelegate {
         
     }
     
+    func nodDetected() {
+        if isGameOver {
+            restartGame()
+        }
+    }
+
     func moveRight() {
+        guard !isGameOver else { return }
         if characterLaneIndex < numberOfLanes - 1 {
             characterLaneIndex += 1
             moveCharacter(to: characterLaneIndex)
@@ -626,6 +713,7 @@ extension Tiles: GameDelegate {
     }
     
     func moveLeft() {
+        guard !isGameOver else { return }
         if characterLaneIndex > 0 {
             characterLaneIndex -= 1
             moveCharacter(to: characterLaneIndex)
@@ -657,12 +745,20 @@ extension Tiles: GameDelegate {
 extension SKView {
     @objc func handleMouthTap(_ sender: UITapGestureRecognizer) {
         if let scene = self.scene as? Tiles {
+            guard !scene.isGameOver else { return }
             scene.advanceMouthStage()
         }
     }
 }
 
 
-#Preview(body: {
-    TilesView(cameraManager: CameraManager())
-})
+#if canImport(SwiftUI)
+import SwiftUI
+@available(iOS 13.0, *)
+struct TilesView_Preview: PreviewProvider {
+    static var previews: some View {
+        SpriteView(scene: Tiles(cameraManager: CameraManager()))
+            .ignoresSafeArea()
+    }
+}
+#endif
