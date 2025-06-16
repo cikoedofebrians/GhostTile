@@ -514,20 +514,18 @@ class Tiles: SKScene {
         overlay.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
         gameOverNode?.addChild(overlay)
 
-        // Game Over Text
-        let gameOverLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
-        gameOverLabel.text = "GAME OVER"
-        gameOverLabel.fontSize = 90
-        gameOverLabel.fontColor = .red
-        gameOverLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
-        gameOverNode?.addChild(gameOverLabel)
+        // game over -> gambar yg fida bikin
+        let gameOverImage = SKSpriteNode(imageNamed: "GameOverText")
+        gameOverImage.setScale(0.8)
+        gameOverImage.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
+        gameOverNode?.addChild(gameOverImage)
         
         // Text Score (Di game over)
         let finalScoreLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
         finalScoreLabel.text = "Your Score: \(score)"
-        finalScoreLabel.fontSize = 60
+        finalScoreLabel.fontSize = 50
         finalScoreLabel.fontColor = .white
-        finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.40)
         gameOverNode?.addChild(finalScoreLabel)
         
         
@@ -536,7 +534,7 @@ class Tiles: SKScene {
         label.text = "Nod Your Head to Restart"
         label.fontSize = 40
         label.fontColor = .white
-        label.position = CGPoint(x: size.width / 2, y: size.height * 0.35)
+        label.position = CGPoint(x: size.width / 2, y: size.height * 0.30)
         self.restartLabel = label
         gameOverNode?.addChild(self.restartLabel!)
         if let gameOverNode = gameOverNode {
@@ -549,7 +547,6 @@ class Tiles: SKScene {
             self.isPaused = false
             
             if let view = self.view {
-                // NOTE: Pastikan nama class `StartScene` sudah benar sesuai dengan file Anda
                 let startScene = StartScene()
                 startScene.scaleMode = self.scaleMode
                 
@@ -702,10 +699,10 @@ class Tiles: SKScene {
 
 
 extension Tiles: GameDelegate {
+    
     func blinkDetected() {
         
     }
-    
     
     // logic node 2 orang
     func nodDetected(playerIndex: Int) {
@@ -729,9 +726,11 @@ extension Tiles: GameDelegate {
         } else {
             
             if playerOneNodded {
-                restartLabel?.text = "Player 1 Ready! Waiting for Player 2..."
+                restartLabel?.text = "Player 1 Ready!"
+                restartLabel?.fontSize = 30
             } else if playerTwoNodded {
-                restartLabel?.text = "Player 2 Ready! Waiting for Player 1..."
+                restartLabel?.text = "Player 2 Ready!"
+                restartLabel?.fontSize = 30
             }
         }
     }
@@ -791,3 +790,4 @@ struct TilesView_Preview: PreviewProvider {
             .ignoresSafeArea()
     }
 }
+
