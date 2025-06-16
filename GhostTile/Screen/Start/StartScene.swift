@@ -99,6 +99,8 @@ class StartScene: SKScene {
     }
     
     
+    
+    
     private func setupTitle() {
         let title = SKSpriteNode(imageNamed: "GhostTiles")
         title.zPosition = 1000
@@ -195,6 +197,8 @@ class StartScene: SKScene {
             addChild(line)
         }
     }
+    
+    
     
     
     private func startGameIfBothReady() {

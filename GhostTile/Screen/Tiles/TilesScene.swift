@@ -52,6 +52,7 @@ class Tiles: SKScene {
     var lastScoreUpdate: TimeInterval = 0
     var scoreUpdateInterval: TimeInterval = 1
     var scoreIncrement: Double = 1.0
+    var wallHealth: Int = 30
     var isWallSpawned: Bool = false
     var wallY: CGFloat = 0.0
     var crashOverlay : SKSpriteNode?
@@ -67,14 +68,26 @@ class Tiles: SKScene {
         return blinkNode
     }()
     
+    var collisionCount: Int = 0
+    let maxCollisions: Int = 3
+    var isGameOver: Bool = false
+    var gameOverNode: SKNode?
+    let randomJumpscareImages: [String] = ["jumpscare", "kucing"]
+    var restartLabel: SKLabelNode?
+    
+    
     var health: Int = 3 {
         didSet {
             if health <= 0 {
-                shouldStartGame = false
+                let waitAction = SKAction.wait(forDuration: 1.0)
+                let gameOverAction = SKAction.run { [weak self] in
+                    self?.gameOver()
+                }
+                self.run(SKAction.sequence([waitAction, gameOverAction]))
             }
         }
     }
-        
+    
     func setupBackgroundMusic() {
         
     }
@@ -106,7 +119,7 @@ class Tiles: SKScene {
         self.anchorPoint = CGPoint(x: 0, y: 0)
         self.scaleMode = .resizeFill
         self.backgroundColor = .black
-
+        
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -269,6 +282,8 @@ class Tiles: SKScene {
         return scale
     }
     override func update(_ currentTime: TimeInterval) {
+        guard !isGameOver else { return }
+        
         if lanes.count > 1 {
             
             adjustTimer(currentTime: currentTime)
@@ -282,7 +297,7 @@ class Tiles: SKScene {
                     wall.run(action)
                 }
                 let scale = calculateScale(forY: wallY - 6)
-                wallY -= 6 * scale
+                wallY -= 2 * scale
                 let widthX1 = laneEdgeX(laneIndex: 0, y: wallY)
                 let widthX2 = laneEdgeX(laneIndex: 4, y: wallY)
                 let width = abs(widthX2 - widthX1)
@@ -290,11 +305,7 @@ class Tiles: SKScene {
                 wall.position = CGPoint(x: widthX1 + width / 2, y: wallY)
                 
                 if wallY < -wall.size.height {
-                    health -= 1
-                    advanceMouthStage()
-                    wall.removeFromParent()
-                    hasBlinked = false
-                    isWallSpawned = false
+                    resetWall()
                 }
             }
             if isWallSpawned && !activeBoxes.isEmpty || !isWallSpawned {
@@ -325,7 +336,7 @@ class Tiles: SKScene {
                     var selectedLanes: [Int] = []
                     
                     //                    if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
-                    if totalElapsedTime - lastAllLaneSpawnTime >= 30 && !isWallSpawned {
+                    if totalElapsedTime - lastAllLaneSpawnTime >= 10 && !isWallSpawned {
                         selectedLanes = [0, 1, 2, 3]
                         lastAllLaneSpawnTime = totalElapsedTime
                         isWallSpawned = true
@@ -444,6 +455,7 @@ class Tiles: SKScene {
                 else if activeBoxes.isEmpty && isWallSpawned {
                     let yOverlap = character.frame.intersection(wall.frame).height
                     if yOverlap >= collisionThreshold && !isInCollisionCooldown {
+                        health -= 1
                         handleCharacterCrash()
                         isInCollisionCooldown = true
                         lastCollisionTime = currentTime
@@ -461,19 +473,37 @@ class Tiles: SKScene {
     private func handleCharacterCrash() {
         guard let character = character else { return }
         
-        let blink = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.0, duration: 0.25),
-            SKAction.fadeAlpha(to: 1.0, duration: 0.25)
-        ])
-        let repeatBlink = SKAction.repeat(blink, count: 7)
-        character.run(repeatBlink, withKey: "blink")
+        if health > 0 {
+            // else -> collision pertama & ke dua
+            
+            // random gambar jumpscare
+            if let randomImage = randomJumpscareImages.randomElement() {
+                showJumpscare(imageName: randomImage)
+            }
+            
+            // Karakter berkedip
+            let blink = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.0, duration: 0.25),
+                SKAction.fadeAlpha(to: 1.0, duration: 0.25)
+            ])
+            let repeatBlink = SKAction.repeat(blink, count: 4)
+            character.run(repeatBlink)
+        }
+    }
+    
+    
+    private func showJumpscare(imageName: String) {
+        guard let overlay = crashOverlay else { return }
         
-        crashOverlay?.alpha = 0
-        crashOverlay?.run(SKAction.fadeAlpha(to: 1.0, duration: 0.2))
+        overlay.texture = SKTexture(imageNamed: imageName)
         
-        let wait = SKAction.wait(forDuration: 1.5)
-        let fadeOut = SKAction.fadeAlpha(to: 0, duration: 0.5)
-        crashOverlay?.run(SKAction.sequence([wait, fadeOut]))
+        overlay.removeAllActions()
+        overlay.alpha = 0
+        overlay.run(SKAction.sequence([
+            SKAction.fadeAlpha(to: 1.0, duration: 0.1),
+            SKAction.wait(forDuration: 0.5),
+            SKAction.fadeAlpha(to: 0.0, duration: 0.5)
+        ]))
     }
     
     private func setupCharacter() {
@@ -512,6 +542,50 @@ class Tiles: SKScene {
         }
         
         currentLane = laneIndex
+    }
+    
+    private func gameOver() {
+        isWallSpawned = false
+        isGameOver = true
+        timer?.invalidate()
+        
+        character?.removeAllActions()
+        
+        gameOverNode = SKNode()
+        gameOverNode?.zPosition = 2000
+        
+        let overlay = SKSpriteNode(color: .black, size: self.size)
+        overlay.alpha = 0.8
+        overlay.position = CGPoint(x: self.size.width / 2, y: self.size.height / 2)
+        gameOverNode?.addChild(overlay)
+        
+        // game over -> gambar yg fida bikin
+        let gameOverImage = SKSpriteNode(imageNamed: "game_over_text")
+        gameOverImage.setScale(0.8)
+        gameOverImage.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
+        gameOverNode?.addChild(gameOverImage)
+        
+        // Text Score (Di game over)
+        let finalScoreLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
+        finalScoreLabel.text = "Your Score: \(score)"
+        finalScoreLabel.fontSize = 50
+        finalScoreLabel.fontColor = .white
+        finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.40)
+        gameOverNode?.addChild(finalScoreLabel)
+        
+        
+        // Text nyuruh nod
+        let label = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
+        label.text = "Nod Your Head to Restart"
+        label.fontSize = 40
+        label.fontColor = .white
+        label.position = CGPoint(x: size.width / 2, y: size.height * 0.30)
+        self.restartLabel = label
+        gameOverNode?.addChild(self.restartLabel!)
+        
+        if let gameOverNode = gameOverNode {
+            addChild(gameOverNode)
+        }
     }
     
     
@@ -562,7 +636,7 @@ class Tiles: SKScene {
         let mouthNodeBack = SKSpriteNode(imageNamed: "top_mouth")
         mouthNodeBack.zPosition = 10
         mouthNodeBack.setScale(0.6)
-
+        
         mouthNodeBack.position = CGPoint(x: size.width / 2, y: y)
         
         addChild(mouthNodeBack)
@@ -574,7 +648,7 @@ class Tiles: SKScene {
         
         let scale: CGFloat
         let yOffset: CGFloat
-            
+        
         switch health {
         case 3:
             scale = 0.6
@@ -609,12 +683,150 @@ class Tiles: SKScene {
         addChild(overlay)
         crashOverlay = overlay
     }
+    
+    func resetWall() {
+        DispatchQueue.main.async {
+            self.isWallSpawned = false
+            self.wallHealth = 30
+            self.hasBlinked = false
+            let textures = (1...6).map { SKTexture(imageNamed: "wall_\($0)") }
+            let animation = SKAction.animate(with: textures, timePerFrame: 0.2)
+            let fullAnimation = SKAction.sequence([animation, animation.reversed()])
+            self.wall.run(SKAction.repeatForever(fullAnimation))
+            self.wall.removeFromParent()
+        }
+    }
+    
+    private func blinkToFire() {
+        guard isWallSpawned, let character = character else { return }
+        wall.alpha = 1.0
+        let startY = character.position.y + character.size.height
+        let laneIndex = currentLane
+        
+        let bullet = SKSpriteNode(color: .red, size: CGSize(width: 30, height: 60))
+        bullet.anchorPoint = CGPoint(x: 0.5, y: 0)
+        bullet.zPosition = 5
+        addChild(bullet)
+        
+        var currentBulletY = startY
+        let updateInterval: TimeInterval = 0.5 / 60.0
+        
+        let updateAction = SKAction.run { [weak self, weak bullet] in
+            guard let self = self, let bullet = bullet else { return }
+            
+            let scale = self.calculateScale(forY: currentBulletY)
+            let widthX1 = self.laneEdgeX(laneIndex: laneIndex, y: currentBulletY)
+            let widthX2 = self.laneEdgeX(laneIndex: laneIndex + 1, y: currentBulletY)
+            let laneWidthAtY = abs(widthX2 - widthX1)
+            
+            // 1. Update ukuran dan posisi
+            bullet.size = CGSize(width: 10 * scale, height: 100 * scale)
+            bullet.position = CGPoint(
+                x: widthX1 + laneWidthAtY / 2,
+                y: currentBulletY
+            )
+            
+            let nextY = currentBulletY + 1
+            let nextX1 = self.laneEdgeX(laneIndex: laneIndex, y: nextY)
+            let nextX2 = self.laneEdgeX(laneIndex: laneIndex + 1, y: nextY)
+            let nextCenterX = (nextX1 + nextX2) / 2
+            
+            let currentCenterX = widthX1 + laneWidthAtY / 2
+            let deltaX = nextCenterX - currentCenterX
+            let deltaY = nextY - currentBulletY
+            let angle = atan2(deltaY, deltaX) - .pi/2
+            
+            bullet.zRotation = angle
+            currentBulletY += 10 * scale
+            
+            self.checkBulletCollision(bullet: bullet, at: currentBulletY)
+            
+            if currentBulletY > self.size.height - self.size.height / 3 {
+                bullet.removeFromParent()
+            }
+        }
+        
+        let waitAction = SKAction.wait(forDuration: updateInterval)
+        let movementSequence = SKAction.sequence([updateAction, waitAction])
+        let repeatMovement = SKAction.repeatForever(movementSequence)
+        
+        bullet.run(repeatMovement, withKey: "bulletMovement")
+    }
+    
+    
+    private func setupWallCrackTexture() {
+        if wallHealth > 0 {
+            let crackImageName: String
+            
+            if wallHealth >= 25 {
+                wall.removeAllActions()
+                crackImageName = "Crack-1"
+            } else if wallHealth >= 20 {
+                crackImageName = "Crack-2"
+            } else if wallHealth >= 15 {
+                crackImageName = "Crack-3"
+            } else if wallHealth >= 10 {
+                crackImageName = "Crack-4"
+            } else if wallHealth >= 5 {
+                crackImageName = "Crack-5"
+            } else  {
+                crackImageName = "Crack-6"
+            }
+            wall.texture = SKTexture(imageNamed: crackImageName)
+        } else {
+            destroyWall()
+        }
+    }
+    
+    private func destroyWall() {
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        let reset = SKAction.run {
+            self.resetWall()
+        }
+        
+        if let particles = SKEmitterNode(fileNamed: "WallExplosion") {
+            particles.position = wall.position
+            particles.zPosition = wall.zPosition + 2
+            addChild(particles)
+            particles.run(SKAction.sequence([
+                SKAction.wait(forDuration: 1.0),
+                SKAction.removeFromParent()
+            ]))
+        }
+        
+        wall.run(SKAction.sequence([fadeOut, reset]))
+    }
+    
+    private func checkBulletCollision(bullet: SKSpriteNode, at y: CGFloat) {
+        if isWallSpawned {
+            let bulletFrame = bullet.frame
+            let wallFrame = CGRect(x: wall.frame.minX, y: wall.frame.minY + wall.frame.height / 2, width: wall.frame.width, height: wall.frame.height)
+            
+            DispatchQueue.main.async {
+                if bulletFrame.intersects(wallFrame)  {
+                    self.wallHealth -= 1
+                    self.setupWallCrackTexture()
+                    bullet.removeAllActions()
+                    bullet.removeFromParent()
+                }
+            }
+        }
+    }
+    
+    var blinkCount: Int = 0
 }
 
 
 extension Tiles: GameDelegate {
+    func nodDetected() {
+        guard isGameOver else { return }
+        shouldStartGame = false
+    }
+    
+    
     func blinkDetected() {
-        
+        blinkCount += 1
+        blinkToFire()
     }
     
     func moveRight() {

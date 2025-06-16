@@ -126,19 +126,29 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     for (index, face) in limitFaceRolls.enumerated() {
                         if let pitch = face.pitch {
                             let pitchInDegrees = pitch.doubleValue * (180.0 / .pi)
-                            if self.initialNodsPitch.count < 2 {
-                                self.initialNodsPitch.append(pitchInDegrees)
-                            } else if self.initialNodsPitch.count == self.faceNods.count {
-                                if pitchInDegrees - self.initialNodsPitch[index] > 10 && !self.faceNods[index] {
-                                    DispatchQueue.main.async {
-                                        self.faceNods[index] = true
-                                    }
+                            if pitchInDegrees > 20 {
+                                DispatchQueue.main.async {
+                                    self.faceNods[index] = true
                                 }
                             }
+//                            if self.initialNodsPitch.count < 2 {
+//                                self.initialNodsPitch.append(pitchInDegrees)
+//                            } else if self.initialNodsPitch.count == self.faceNods.count {
+//                                if pitchInDegrees - self.initialNodsPitch[index] > 10 && !self.faceNods[index] {
+//                                    DispatchQueue.main.async {
+//                                        self.faceNods[index] = true
+//                                    }
+//                                }
+//                            }
                             
                         }
                     }
+                    
+                    if self.faceNods[0] && self.faceNods[1] {
+                        self.delegate?.nodDetected()
+                    }
                 }
+            
                 
                 DispatchQueue.main.async  {
                     if faceRolls.count == 2 {
@@ -155,11 +165,12 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
         }
         
         let faceLandmarksRequest = VNDetectFaceLandmarksRequest { request, error in
-            if let results = request.results as? [VNFaceObservation], results.count >= 2 {
-                let limitFaceRolls =  results.prefix(2)
+            if let results = request.results as? [VNFaceObservation] {
+                let sortFaceRolls = results.sorted { $0.boundingBox.origin.x > $1.boundingBox.origin.x }
+                let limitFaceRolls = sortFaceRolls.prefix(2)
                 var blinkStates: [Bool] = []
                 
-                for face in limitFaceRolls {
+                for (index, face) in limitFaceRolls.enumerated() {
                     guard let landmarks = face.landmarks,
                           let leftEye = landmarks.leftEye,
                           let rightEye = landmarks.rightEye else {
@@ -169,23 +180,29 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     
                     let leftClosed = self.isEyeClosed(leftEye)
                     let rightClosed = self.isEyeClosed(rightEye)
-                    blinkStates.append(leftClosed && rightClosed)
+                    if self.previousEyeStates[index] {
+                        blinkStates.append(leftClosed || rightClosed)
+                    } else {
+                        
+                        blinkStates.append(leftClosed && rightClosed)
+                    }
                 }
-                
                 
                 while blinkStates.count < 2 {
                     blinkStates.append(false)
                 }
                 
-                for (index, _) in blinkStates.enumerated() {
-                    if blinkStates[index] != self.previousEyeStates[index] {
-                        DispatchQueue.main.async {
+                DispatchQueue.main.async {
+                    for (index, _) in blinkStates.enumerated() {
+                        if blinkStates[index] != self.previousEyeStates[index] && blinkStates[index] {
+                            print("Blink detected from index \(index)")
                             self.delegate?.blinkDetected()
                         }
                     }
+                    self.previousEyeStates = blinkStates
                 }
                 
-                self.previousEyeStates = blinkStates
+    
             }
         }
         
