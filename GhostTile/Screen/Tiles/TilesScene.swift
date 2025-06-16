@@ -66,12 +66,10 @@ class Tiles: SKScene {
     var gameOverNode: SKNode?
     let randomJumpscareImages: [String] = ["jumpscare", "kucing"]
     
-    // <<< TAMBAHKAN 3 VARIABEL DI BAWAH INI
-    // Variabel untuk melacak status anggukan setiap pemain dan referensi label.
     var playerOneNodded: Bool = false
     var playerTwoNodded: Bool = false
     var restartLabel: SKLabelNode?
-    // <<< AKHIR DARI PENAMBAHAN
+
     
     let specialJumpscareImage: String = "mouthClosing_dummy"
 
@@ -232,13 +230,9 @@ class Tiles: SKScene {
         totalElapsedTime = 0
         activeBoxes.removeAll()
         
-        // <<< TAMBAHKAN 2 BARIS DI BAWAH INI UNTUK RESET
-        // Mengatur ulang status anggukan untuk ronde permainan berikutnya.
         playerOneNodded = false
         playerTwoNodded = false
-        // <<< AKHIR DARI PENAMBAHAN
         
-        // Setup scene
         setupBackground()
         setupPerspectiveLines()
         setupCharacter()
