@@ -18,18 +18,26 @@ import SpriteKit
 
 struct StartGameView: View {
     @StateObject var cameraManager: CameraManager = CameraManager()
-    private var startScene = StartScene()
-    @State private var shouldStartGame = false
+    @State var startScene = StartScene()
+    @State private var shouldStartGame = false {
+        didSet {
+            if shouldStartGame {
+                startScene = StartScene() // Reset the scene when starting the game
+            }
+        }
+    }
     
     
     
     var body: some View {
         if shouldStartGame {
-            TilesView(cameraManager: cameraManager)
+            TilesView(shouldStartGame: $shouldStartGame, cameraManager: cameraManager)
+                .transition(.identity)
         } else {
             SpriteView(scene: startScene, options: [.allowsTransparency])
                 .ignoresSafeArea()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.identity)
                 .onAppear {
                     startScene.onCountDownComplete = {
                         DispatchQueue.main.async {
@@ -52,37 +60,6 @@ struct StartGameView: View {
                         }
                     }
                 }
-//                .onChange(of: cameraManager.playerOneNodded) { _, newValue in
-//                    if newValue {
-//                        startScene.StartPlayerOneReady()
-//                    }
-//                }
-//                .onChange(of: cameraManager.playerTwoNodded) { _, newValue in
-//                    if newValue {
-//                        startScene.StartPlayerTwoReady()
-//                    }
-//                }
         }
-        
     }
 }
-
-
-
-
-
-//        SpriteView(scene: startScene)
-//            .ignoresSafeArea()
-//            .onChange(of: cameraManager.playerCount) {_, newCount in
-//                startScene.updateCharacterAnimation(for: newCount)
-//            }
-//            .onChange(of: cameraManager.playerOneNodded) { _, newValue in
-//                if newValue {
-//                    startScene.StartPlayerOneReady()
-//                }
-//            }
-//            .onChange(of: cameraManager.playerTwoNodded) { _, newValue in
-//                if newValue {
-//                    startScene.StartPlayerTwoReady()
-//                }
-//            }

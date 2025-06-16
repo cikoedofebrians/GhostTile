@@ -11,6 +11,7 @@ import AVKit
 
 
 class Tiles: SKScene {
+    @Binding var shouldStartGame: Bool
     let numberOfLanes = 4
     let baseHeight: CGFloat = 100
     let laneWidth: CGFloat = 160.0
@@ -32,7 +33,6 @@ class Tiles: SKScene {
     var score: Int = 0
     private var mouthFront: SKSpriteNode?
     private var mouthBack: SKSpriteNode?
-    private var mouthStage: Int = 0
     var currentLaneSpan: Int = 1
     var boxes: [SKSpriteNode] = []
     var activeBoxes: [(node: SKSpriteNode, laneIndex: Int, y: CGFloat)] = []
@@ -56,7 +56,6 @@ class Tiles: SKScene {
     var wallY: CGFloat = 0.0
     var crashOverlay : SKSpriteNode?
     var bulletTimer: Timer?
-//    let cameraManager: CameraManager = CameraManager()
     let cameraManager: CameraManager
     var hasBlinked: Bool = false
     let blink: SKSpriteNode = {
@@ -67,13 +66,17 @@ class Tiles: SKScene {
         blinkNode.zPosition = 1000
         return blinkNode
     }()
+    
+    var health: Int = 3 {
+        didSet {
+            if health <= 0 {
+                shouldStartGame = false
+            }
+        }
+    }
         
     func setupBackgroundMusic() {
-//        if let musicURL = Bundle.main.url(forResource: "backsound", withExtension: "mp3") {
-//            let backgroundMusic = SKAudioNode(url: musicURL)
-//            backgroundMusic.autoplayLooped = true
-//            addChild(backgroundMusic)
-//        }
+        
     }
     
     let background: SKSpriteNode = {
@@ -96,13 +99,14 @@ class Tiles: SKScene {
         return wall
     }()
     
-    
-    init(cameraManager: CameraManager) {
+    init(cameraManager: CameraManager, shouldStartGame: Binding<Bool>) {
+        self._shouldStartGame = shouldStartGame
         self.cameraManager = cameraManager
         super.init(size: .zero)
         self.anchorPoint = CGPoint(x: 0, y: 0)
         self.scaleMode = .resizeFill
         self.backgroundColor = .black
+
     }
     
     required init?(coder aDecoder: NSCoder) {
@@ -138,6 +142,7 @@ class Tiles: SKScene {
             }
         }
     }
+    
     
     private func setupScore() {
         let scoreTitleLabel = SKLabelNode(text: "Score")
@@ -285,6 +290,8 @@ class Tiles: SKScene {
                 wall.position = CGPoint(x: widthX1 + width / 2, y: wallY)
                 
                 if wallY < -wall.size.height {
+                    health -= 1
+                    advanceMouthStage()
                     wall.removeFromParent()
                     hasBlinked = false
                     isWallSpawned = false
@@ -424,6 +431,8 @@ class Tiles: SKScene {
                             let yOverlap = characterFrame.intersection(boxFrame).height
                             
                             if yOverlap >= collisionThreshold && !isInCollisionCooldown {
+                                health -= 1
+                                advanceMouthStage()
                                 handleCharacterCrash()
                                 isInCollisionCooldown = true
                                 lastCollisionTime = currentTime
@@ -566,16 +575,19 @@ class Tiles: SKScene {
         let scale: CGFloat
         let yOffset: CGFloat
             
-        switch mouthStage {
-        case 0:
+        switch health {
+        case 3:
             scale = 0.6
             yOffset = -280
-        case 1:
+        case 2:
             scale = 0.8
             yOffset = -400
-        case 2:
+        case 1:
             scale = 1.0
             yOffset = -550
+        case 0:
+            scale = 1.4
+            yOffset = -700
         default:
             scale = 0.6
             yOffset = -280
@@ -596,19 +608,6 @@ class Tiles: SKScene {
         overlay.alpha = 0
         addChild(overlay)
         crashOverlay = overlay
-    }
-    
-    private func getCurrentMouthYPosition() -> CGFloat {
-        switch mouthStage {
-        case 0:
-            return size.height - size.height / 3 - 280
-        case 1:
-            return size.height - size.height / 3 - 400
-        case 2:
-            return size.height - size.height / 3 - 550
-        default:
-            return size.height - size.height / 3 - 280
-        }
     }
 }
 
@@ -664,5 +663,5 @@ extension SKView {
 
 
 #Preview(body: {
-    TilesView(cameraManager: CameraManager())
+    TilesView(shouldStartGame: .constant(true), cameraManager: CameraManager())
 })

@@ -10,10 +10,11 @@ import SpriteKit
 
 
 struct TilesView: View {
+    @Binding var shouldStartGame: Bool
     @ObservedObject var cameraManager: CameraManager
     
     var body: some View {
-        SpriteView(scene:  Tiles(cameraManager: cameraManager))
+        SpriteView(scene: Tiles(cameraManager: cameraManager, shouldStartGame: $shouldStartGame), options: [.allowsTransparency])
             .ignoresSafeArea()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationBarTitleDisplayMode(.inline)
@@ -21,5 +22,5 @@ struct TilesView: View {
 }
 
 #Preview {
-    TilesView(cameraManager: CameraManager())
+    TilesView(shouldStartGame: .constant(true), cameraManager: CameraManager())
 }
