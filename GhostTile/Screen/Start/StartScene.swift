@@ -7,8 +7,12 @@
 
 import SpriteKit
 import SwiftUI
+import AVFoundation
 
 class StartScene: SKScene {
+    
+    private var backgroundMusicPlayer: AVAudioPlayer?
+    
     var onCountDownComplete: (() ->Void)?
     let numberOfLanes = 4
     let baseHeight: CGFloat = 100
@@ -64,7 +68,26 @@ class StartScene: SKScene {
         setupMouths()
         setupNodeOrder()
         setupBackground()
+        
+        playBackgroundMusic()
     }
+    
+    func playBackgroundMusic() {
+            
+            guard let url = Bundle.main.url(forResource: "start-song", withExtension: "mp3") else {
+                print("Error: File audio tidak ditemukan.")
+                return
+            }
+            
+            do {
+                backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+                backgroundMusicPlayer?.numberOfLoops = -1
+                backgroundMusicPlayer?.prepareToPlay()
+                backgroundMusicPlayer?.play()
+            } catch {
+                print("Error: Tidak bisa memutar file audio - \(error.localizedDescription)")
+            }
+        }
     
     func setupBackground() {
         background.size = CGSize(width: size.width, height: size.height)

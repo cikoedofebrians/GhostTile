@@ -11,6 +11,13 @@ import AVKit
 
 
 class Tiles: SKScene {
+    
+    var gameOverAudioPlayer: AVAudioPlayer?
+    var backgroundMusicPlayer: AVAudioPlayer?
+    var shootingAudioPlayer: AVAudioPlayer?
+    var jumpscareAudioPlayer: AVAudioPlayer?
+    let randomJumpscareSounds: [String] = ["jumpscare-monsterscr", "jumpscare-kaget", "jumpsc-whoosh"]
+    
     @Binding var shouldStartGame: Bool
     let numberOfLanes = 4
     let baseHeight: CGFloat = 100
@@ -72,7 +79,7 @@ class Tiles: SKScene {
     let maxCollisions: Int = 3
     var isGameOver: Bool = false
     var gameOverNode: SKNode?
-    let randomJumpscareImages: [String] = ["jumpscare", "kucing"]
+    let randomJumpscareImages: [String] = ["jumpscare", "jumpscare2", "jumpscare3", "jumpscare4"]
     var restartLabel: SKLabelNode?
     
     
@@ -89,8 +96,21 @@ class Tiles: SKScene {
     }
     
     func setupBackgroundMusic() {
-        
-    }
+            
+            guard let url = Bundle.main.url(forResource: "run-song", withExtension: "mp3") else {
+                print("Error")
+                return
+            }
+            
+            do {
+                backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+                backgroundMusicPlayer?.numberOfLoops = -1
+                backgroundMusicPlayer?.prepareToPlay()
+                backgroundMusicPlayer?.play()
+            } catch {
+                print("Error")
+            }
+        }
     
     let background: SKSpriteNode = {
         let background = SKSpriteNode()
@@ -481,6 +501,8 @@ class Tiles: SKScene {
                 showJumpscare(imageName: randomImage)
             }
             
+            playRandomJumpscareSound()
+            
             // Karakter berkedip
             let blink = SKAction.sequence([
                 SKAction.fadeAlpha(to: 0.0, duration: 0.25),
@@ -491,6 +513,29 @@ class Tiles: SKScene {
         }
     }
     
+    private func playRandomJumpscareSound() {
+           
+            guard let soundName = randomJumpscareSounds.randomElement() else {
+                print("Gak iso")
+                return
+            }
+            
+          
+            guard let url = Bundle.main.url(forResource: soundName, withExtension: "mp3") else {
+                print("Error")
+                return
+            }
+            
+        
+            do {
+                jumpscareAudioPlayer = try AVAudioPlayer(contentsOf: url)
+                jumpscareAudioPlayer?.numberOfLoops = 0
+                jumpscareAudioPlayer?.volume = 10.0
+                jumpscareAudioPlayer?.play()
+            } catch {
+                print("Error")
+            }
+        }
     
     private func showJumpscare(imageName: String) {
         guard let overlay = crashOverlay else { return }
@@ -586,6 +631,17 @@ class Tiles: SKScene {
         if let gameOverNode = gameOverNode {
             addChild(gameOverNode)
         }
+        
+        if let url = Bundle.main.url(forResource: "GameOverSong", withExtension: "mp3") {
+                    do {
+                        gameOverAudioPlayer = try AVAudioPlayer(contentsOf: url)
+                        gameOverAudioPlayer?.numberOfLoops = 0
+                        gameOverAudioPlayer?.play()
+                    } catch {
+                        print("Error")
+                    }
+                }
+        
     }
     
     
@@ -698,6 +754,18 @@ class Tiles: SKScene {
     }
     
     private func blinkToFire() {
+        
+        if let url = Bundle.main.url(forResource: "shoot", withExtension: "mp3") {
+                do {
+                    shootingAudioPlayer = try AVAudioPlayer(contentsOf: url)
+                    shootingAudioPlayer?.play()
+                    shootingAudioPlayer?.volume = 8.0
+                } catch {
+                    print("Error")
+                }
+            }
+            
+        
         guard isWallSpawned, let character = character else { return }
         wall.alpha = 1.0
         let startY = character.position.y + character.size.height
@@ -719,7 +787,6 @@ class Tiles: SKScene {
             let widthX2 = self.laneEdgeX(laneIndex: laneIndex + 1, y: currentBulletY)
             let laneWidthAtY = abs(widthX2 - widthX1)
             
-            // 1. Update ukuran dan posisi
             bullet.size = CGSize(width: 10 * scale, height: 100 * scale)
             bullet.position = CGPoint(
                 x: widthX1 + laneWidthAtY / 2,
@@ -877,3 +944,6 @@ extension SKView {
 #Preview(body: {
     TilesView(shouldStartGame: .constant(true), cameraManager: CameraManager())
 })
+
+
+
