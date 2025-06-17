@@ -20,11 +20,17 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
     var delegate: GameDelegate?
     var faceRollSide: [RollSide] = []
     
+    
+    
     @Published var faceNods: [Bool] = []
     private var initialNodsPitch: [Double] = []
     
     private var previousEyeStates: [Bool] = [false, false]
     
+    public func resetNods() {
+        self.faceNods = []
+        self.initialNodsPitch = []
+    }
     
     func adjustCharAnimation(first: RollSide, second: RollSide) {
         if first == .none && second == .right || first == .right && second == .none {
@@ -122,33 +128,46 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     }
                 }
                 
+                
                 if self.faceNods.count == 2 {
+                    var pitchValues: [Double] = []
                     for (index, face) in limitFaceRolls.enumerated() {
                         if let pitch = face.pitch {
                             let pitchInDegrees = pitch.doubleValue * (180.0 / .pi)
-                            if pitchInDegrees > 20 {
-                                DispatchQueue.main.async {
-                                    self.faceNods[index] = true
+                            pitchValues.append(pitchInDegrees)
+                            //                            if pitchInDegrees > 20 {
+                            //                                DispatchQueue.main.async {
+                            //                                    self.faceNods[index] = true
+                            //                                }
+                            //                            }
+                            if self.initialNodsPitch.count < 2 {
+                                self.initialNodsPitch.append(pitchInDegrees)
+                            } else if self.initialNodsPitch.count == self.faceNods.count && self.initialNodsPitch.count == 2 {
+                                if self.initialNodsPitch[index] - pitchInDegrees < -15 && !self.faceNods[index] {
+                                    DispatchQueue.main.async {
+                                        self.faceNods[index] = true
+                                    }
                                 }
                             }
-//                            if self.initialNodsPitch.count < 2 {
-//                                self.initialNodsPitch.append(pitchInDegrees)
-//                            } else if self.initialNodsPitch.count == self.faceNods.count {
-//                                if pitchInDegrees - self.initialNodsPitch[index] > 10 && !self.faceNods[index] {
-//                                    DispatchQueue.main.async {
-//                                        self.faceNods[index] = true
-//                                    }
-//                                }
-//                            }
-                            
                         }
                     }
                     
-                    if self.faceNods[0] && self.faceNods[1] {
-                        self.delegate?.nodDetected()
+                    
+                    if pitchValues.count == 2 {
+                        DispatchQueue.main.async {
+                            self.delegate?.sendNods(firstNod: pitchValues[0], secondNod: pitchValues[1], nodTogether: { isNodTogether in
+                                if isNodTogether {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                        self.faceNods = []
+                                        self.initialNodsPitch = []
+                                    }
+                                }
+                            }
+                            )
+                        }
                     }
                 }
-            
+                
                 
                 DispatchQueue.main.async  {
                     if faceRolls.count == 2 {
@@ -202,7 +221,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                     self.previousEyeStates = blinkStates
                 }
                 
-    
+                
             }
         }
         

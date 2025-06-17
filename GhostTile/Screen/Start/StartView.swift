@@ -22,7 +22,7 @@ struct StartGameView: View {
     @State private var shouldStartGame = true {
         didSet {
             if shouldStartGame {
-                startScene = StartScene() // Reset the scene when starting the game
+                startScene = StartScene()
             }
         }
     }

@@ -76,7 +76,7 @@ class Tiles: SKScene {
     var restartLabel: SKLabelNode?
     
     
-    var health: Int = 3 {
+    var health: Int = 1 {
         didSet {
             if health <= 0 {
                 let waitAction = SKAction.wait(forDuration: 1.0)
@@ -158,15 +158,15 @@ class Tiles: SKScene {
     
     
     private func setupScore() {
-        let scoreTitleLabel = SKLabelNode(text: "Score")
+        let scoreTitleLabel = SKLabelNode(text: "SCORE")
         scoreTitleLabel.fontSize = 36
-        scoreTitleLabel.fontName = "Arial-SemiBoldMT"
+        scoreTitleLabel.fontName = "NightscaryFreeTrial"
         scoreLabel = scoreTitleLabel
         let scoreValLabel = SKLabelNode(text: "\(score)")
         
         scoreValLabel.fontSize = 48
         scoreValLabel.fontColor = .white
-        scoreValLabel.fontName = "Arial-BoldMT"
+        scoreValLabel.fontName = "NightscaryFreeTrial"
         
         scoreValueLabel = scoreValLabel
         
@@ -208,6 +208,14 @@ class Tiles: SKScene {
     
     
     override func didMove(to view: SKView) {
+        // Debug: Print all available fonts
+        for family in UIFont.familyNames {
+            print("Family: \(family)")
+            for name in UIFont.fontNames(forFamilyName: family) {
+                print("Font: \(name)")
+            }
+        }
+        
         cameraManager.delegate = self
         setupBackground()
         setupPerspectiveLines()
@@ -562,24 +570,30 @@ class Tiles: SKScene {
         // game over -> gambar yg fida bikin
         let gameOverImage = SKSpriteNode(imageNamed: "game_over_text")
         gameOverImage.setScale(0.8)
-        gameOverImage.position = CGPoint(x: size.width / 2, y: size.height * 0.65)
+        gameOverImage.position = CGPoint(x: size.width / 2, y: size.height * 0.75)
         gameOverNode?.addChild(gameOverImage)
         
         // Text Score (Di game over)
-        let finalScoreLabel = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
-        finalScoreLabel.text = "Your Score: \(score)"
+        let finalScoreLabel = SKLabelNode(fontNamed: "NightscaryFreeTrial")
+        finalScoreLabel.text = "YOUR SCORE"
         finalScoreLabel.fontSize = 50
         finalScoreLabel.fontColor = .white
         finalScoreLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.40)
         gameOverNode?.addChild(finalScoreLabel)
         
+        let finalScoreValueLabel = SKLabelNode(fontNamed: "NightscaryFreeTrial")
+        finalScoreValueLabel.text = "\(score)"
+        finalScoreValueLabel.fontSize = 120
+        finalScoreValueLabel.fontColor = .white
+        finalScoreValueLabel.position = CGPoint(x: size.width / 2, y: size.height * 0.40 - finalScoreLabel.frame.height - finalScoreValueLabel.frame.height / 2 - 16)
+        gameOverNode?.addChild(finalScoreValueLabel)
         
         // Text nyuruh nod
-        let label = SKLabelNode(fontNamed: "Arial-SemiBoldMT")
-        label.text = "Nod Your Head to Restart"
+        let label = SKLabelNode(fontNamed: "NightscaryFreeTrial")
+        label.text = "NOD YOUR HEAD TO RESTART"
         label.fontSize = 40
         label.fontColor = .white
-        label.position = CGPoint(x: size.width / 2, y: size.height * 0.30)
+        label.position = CGPoint(x: size.width / 2, y: size.height * 0.3 - finalScoreValueLabel.frame.height - finalScoreLabel.frame.height - label.frame.height - 32)
         self.restartLabel = label
         gameOverNode?.addChild(self.restartLabel!)
         
@@ -814,15 +828,38 @@ class Tiles: SKScene {
     }
     
     var blinkCount: Int = 0
+    var initialNods: [Double] = []
+    var isNodDetected: Bool = false
 }
 
 
 extension Tiles: GameDelegate {
-    func nodDetected() {
+    func sendNods(firstNod: Double, secondNod: Double, nodTogether: (Bool) -> Void) {
         guard isGameOver else { return }
-        shouldStartGame = false
+        let nods = [firstNod, secondNod]
+
+        print(nods)
+        if isGameOver  {
+            if initialNods.count < 2 {
+                initialNods = nods
+            } else {
+                var isAllNodded: [Bool] = []
+                for (index, _) in initialNods.enumerated() {
+                    let isNodded = initialNods[index] - nods[index] < -10
+                    isAllNodded.append(isNodded)
+                }
+                
+                if isAllNodded.allSatisfy({ $0 }) && !isNodDetected {
+                    isNodDetected = true
+                    nodTogether(true)
+                    DispatchQueue.main.async {
+                        self.shouldStartGame = false
+                    }
+         
+                }
+            }
+        }
     }
-    
     
     func blinkDetected() {
         blinkCount += 1
