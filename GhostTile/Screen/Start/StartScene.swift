@@ -26,6 +26,8 @@ class StartScene: SKScene {
     var nodeOrderNode: SKSpriteNode?
     private var isPlayerOneReady = false
     private var isPlayerTwoReady = false
+    private var hasPlayedPlayerOneDetectedOnce = false
+    private var hasPlayedPlayerTwoDetectedOnce = false
     
     
     private var blackOpacityBackground: SKSpriteNode = {
@@ -88,18 +90,18 @@ class StartScene: SKScene {
     }
     
     func updateCharacterAnimation(for playerCount: Int) {
-        guard !gameStarted else { return }
-        if playerCount == 0 {
-            self.StartIdleAnimation()
-        } else if playerCount == 1 {
-            self.StartPlayerOneDetected()
-        } else if playerCount == 2 {
-            self.StartPlayerTwoDetected()
+            guard !gameStarted else { return }
+            if playerCount == 0 {
+                self.StartIdleAnimation()
+                hasPlayedPlayerOneDetectedOnce = false
+                hasPlayedPlayerTwoDetectedOnce = false
+            } else if playerCount == 1 {
+                self.StartPlayerOneDetected()
+                hasPlayedPlayerTwoDetectedOnce = false
+            } else if playerCount == 2 {
+                self.StartPlayerTwoDetected()
+            }
         }
-    }
-    
-    
-    
     
     private func setupTitle() {
         let title = SKSpriteNode(imageNamed: "GhostTiles")
@@ -109,7 +111,6 @@ class StartScene: SKScene {
         addChild(title)
         self.titleNode = title
     }
-    
     
     private func setupMouths() {
         let y = size.height - size.height / 3 - 280
@@ -177,7 +178,6 @@ class StartScene: SKScene {
         
     }
     
-    
     private func setupPerspectiveLines() {
         for i in 0...numberOfLanes {
             let line = SKShapeNode()
@@ -198,9 +198,6 @@ class StartScene: SKScene {
         }
     }
     
-    
-    
-    
     private func startGameIfBothReady() {
         guard !gameStarted else { return }
         gameStarted = true
@@ -208,7 +205,7 @@ class StartScene: SKScene {
     }
     
     private func playAnimation(named animationName: String) {
-        guard let character = character else { return }        
+        guard let character = character else { return }
         character.removeAllActions()
         
         let frameRange: [Int]
@@ -217,10 +214,6 @@ class StartScene: SKScene {
         switch animationName.lowercased() {
         case "startidle":
             frameRange = Array(1...4)
-        case "startplayeronedetected":
-            frameRange = Array(5...12)
-        case "startplayertwodetected":
-            frameRange = Array(13...20)
         case "startplayeroneready":
             frameRange = Array(21...24)
         case "startplayertwoready":
@@ -237,34 +230,95 @@ class StartScene: SKScene {
         character.run(SKAction.repeatForever(sequence), withKey: "startAnimation")
     }
     
+    private func playPlayerOneDetectedIntroThenLoop() {
+        guard let character = character else { return }
+        character.removeAllActions()
+        
+        let introFrames = (5...9).map { SKTexture(imageNamed: "Start-\($0)") }
+        let loopFrames = (6...9).map { SKTexture(imageNamed: "Start-\($0)") }
+
+        let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
+        let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
+        let loopForever = SKAction.repeatForever(loopAction)
+
+        let sequence = SKAction.sequence([introAction, loopForever])
+        character.run(sequence, withKey: "startAnimation")
+    }
+    
+    private func playPlayerTwoDetectedIntroThenLoop() {
+        guard let character = character else { return }
+        character.removeAllActions()
+        
+        let introFrames = (13...17).map { SKTexture(imageNamed: "Start-\($0)") }
+        let loopFrames = (15...17).map { SKTexture(imageNamed: "Start-\($0)") }
+
+        let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
+        let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
+        let loopForever = SKAction.repeatForever(loopAction)
+
+        let sequence = SKAction.sequence([introAction, loopForever])
+        character.run(sequence, withKey: "startAnimation")
+    }
+    
+    private func playPlayerOneReadyIntroThenLoop() {
+        guard let character = character else { return }
+        character.removeAllActions()
+        
+        let introFrames = (21...24).map { SKTexture(imageNamed: "Start-\($0)") }
+        let loopFrames = (22...24).map { SKTexture(imageNamed: "Start-\($0)") }
+
+        let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
+        let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
+        let loopForever = SKAction.repeatForever(loopAction)
+
+        let sequence = SKAction.sequence([introAction, loopForever])
+        character.run(sequence, withKey: "startAnimation")
+    }
+    
+    private func playPlayerTwoReadyIntroThenLoop() {
+        guard let character = character else { return }
+        character.removeAllActions()
+        
+        let introFrames = (25...28).map { SKTexture(imageNamed: "Start-\($0)") }
+        let loopFrames = (26...28).map { SKTexture(imageNamed: "Start-\($0)") }
+
+        let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
+        let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
+        let loopForever = SKAction.repeatForever(loopAction)
+
+        let sequence = SKAction.sequence([introAction, loopForever])
+        character.run(sequence, withKey: "startAnimation")
+    }
+
     private func checkIfBothPlayersReady(){
         if(isPlayerOneReady && isPlayerTwoReady){
             startGameIfBothReady()
         }
     }
     
-    
     func StartIdleAnimation() {
         playAnimation(named: "StartIdle")
     }
     
     func StartPlayerOneDetected() {
-        playAnimation(named: "StartPlayerOneDetected")
+            playPlayerOneDetectedIntroThenLoop()
     }
     
-    
     func StartPlayerOneReady() {
-        playAnimation(named: "StartPlayerOneReady")
+        playPlayerOneReadyIntroThenLoop()
         isPlayerOneReady = true
         checkIfBothPlayersReady()
     }
     
     func StartPlayerTwoDetected() {
-        playAnimation(named: "StartPlayerTwoDetected")
+        if !hasPlayedPlayerTwoDetectedOnce {
+            playPlayerTwoDetectedIntroThenLoop()
+            hasPlayedPlayerTwoDetectedOnce = true
+        }
     }
     
     func StartPlayerTwoReady() {
-        playAnimation(named: "StartPlayerTwoReady")
+        playPlayerTwoReadyIntroThenLoop()
         isPlayerTwoReady = true
         checkIfBothPlayersReady()
     }
