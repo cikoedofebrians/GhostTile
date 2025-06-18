@@ -7,8 +7,12 @@
 
 import SpriteKit
 import SwiftUI
+import AVFoundation
 
 class StartScene: SKScene {
+    
+    private var backgroundMusicPlayer: AVAudioPlayer?
+    
     var onCountDownComplete: (() ->Void)?
     let numberOfLanes = 4
     let baseHeight: CGFloat = 100
@@ -28,6 +32,8 @@ class StartScene: SKScene {
     private var isPlayerTwoReady = false
     private var hasPlayedPlayerOneDetectedOnce = false
     private var hasPlayedPlayerTwoDetectedOnce = false
+    
+    private var statusTextNode: SKSpriteNode?
     
     
     private var blackOpacityBackground: SKSpriteNode = {
@@ -64,9 +70,69 @@ class StartScene: SKScene {
         setupCharacter()
         setupTitle()
         setupMouths()
-        setupNodeOrder()
         setupBackground()
+        
+        playBackgroundMusic()
+        setupStatusText()
     }
+    
+   
+    private func setupStatusText() {
+        
+        let statusNode = SKSpriteNode(imageNamed: "notready")
+        statusNode.zPosition = 2
+        statusNode.setScale(1.0)
+        
+        
+        if let orderNode = self.nodeOrderNode {
+            statusNode.position = CGPoint(x: size.width / 2, y: orderNode.position.y + orderNode.size.height / 2 - 200)
+        } else {
+            statusNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - 200)
+        }
+        
+        addChild(statusNode)
+        self.statusTextNode = statusNode
+    }
+    
+    
+    private func updateStatusText(for playerCount: Int) {
+        guard let statusNode = statusTextNode else { return }
+        
+        let newTexture: SKTexture
+        
+        switch playerCount {
+        case 0:
+            newTexture = SKTexture(imageNamed: "notready")
+        case 1:
+            newTexture = SKTexture(imageNamed: "oneplayer")
+        case 2:
+            newTexture = SKTexture(imageNamed: "bothready")
+        default:
+            return
+        }
+        
+        if statusNode.texture?.hash != newTexture.hash {
+            statusNode.texture = newTexture
+        }
+    }
+    
+    
+    func playBackgroundMusic() {
+            
+            guard let url = Bundle.main.url(forResource: "start-song", withExtension: "mp3") else {
+                print("Error: File audio tidak ditemukan.")
+                return
+            }
+            
+            do {
+                backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+                backgroundMusicPlayer?.numberOfLoops = -1
+                backgroundMusicPlayer?.prepareToPlay()
+                backgroundMusicPlayer?.play()
+            } catch {
+                print("Error: Tidak bisa memutar file audio - \(error.localizedDescription)")
+            }
+        }
     
     func setupBackground() {
         background.size = CGSize(width: size.width, height: size.height)
@@ -138,18 +204,12 @@ class StartScene: SKScene {
         
     }
     
-    private func setupNodeOrder() {
-        let nodeOrder = SKSpriteNode(imageNamed: "StartNodeOrder")
-        nodeOrder.zPosition = 1
-        nodeOrder.setScale(1.5)
-        nodeOrder.position = CGPoint(x: size.width / 2, y: size.height / 2 - 200)
-        addChild(nodeOrder)
-        self.nodeOrderNode = nodeOrder
-    }
     
     private func startCountdownThenGame(){
         titleNode?.removeFromParent()
         nodeOrderNode?.removeFromParent()
+        
+        statusTextNode?.removeFromParent()
         
         let countdownNumbers = ["Countdown-3", "Countdown-2", "Countdown-1"]
         var countdownSprites: [SKSpriteNode] = []
@@ -334,3 +394,4 @@ class StartScene: SKScene {
     }
     
 }
+
