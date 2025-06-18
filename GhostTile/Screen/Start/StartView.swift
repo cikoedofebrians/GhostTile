@@ -29,8 +29,6 @@ struct StartGameView: View {
     }
     
     
-    
-    
     var body: some View {
         if shouldStartGame {
             TilesView(shouldStartGame: $shouldStartGame, cameraManager: cameraManager)

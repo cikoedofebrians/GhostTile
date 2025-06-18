@@ -17,7 +17,7 @@ class Tiles: SKScene {
     var backgroundMusicPlayer: AVAudioPlayer?
     var shootingAudioPlayer: AVAudioPlayer?
     var jumpscareAudioPlayer: AVAudioPlayer?
-    let randomJumpscareSounds: [String] = ["jumpscare-monsterscr", "jumpscare-kaget", "jumpsc-whoosh"]
+    let randomJumpscareSounds: [String] = ["jumpscaremoster", "jumpscare-kaget", "jumpscarewheh"]
     
     @Binding var shouldStartGame: Bool
     let numberOfLanes = 4
@@ -93,17 +93,17 @@ class Tiles: SKScene {
     var isGameplayPaused = false
     
     var health: Int = 3
-//    {
-//        didSet {
-//            if health <= 0 {
-//                let waitAction = SKAction.wait(forDuration: 0.6)
-//                let gameOverAction = SKAction.run { [weak self] in
-//                    self?.gameOver()
-//                }
-//                self.run(SKAction.sequence([waitAction, gameOverAction]))
-//            }
-//        }
-//    }
+//  {
+//      didSet {
+//          if health <= 0 {
+//              let waitAction = SKAction.wait(forDuration: 0.6)
+//              let gameOverAction = SKAction.run { [weak self] in
+//                  self?.gameOver()
+//              }
+//              self.run(SKAction.sequence([waitAction, gameOverAction]))
+//          }
+//      }
+//  }
     
     
     // blink overlay
@@ -386,6 +386,12 @@ class Tiles: SKScene {
         lastCollisionTime = currentTime
     }
     
+    private func stopGameOverAudio() {
+        gameOverAudioPlayer?.stop()
+        gameOverAudioPlayer = nil
+        print("Audio Game Over dihentikan.")
+    }
+    
     override func update(_ currentTime: TimeInterval) {
         if isGameplayPaused { return }
         guard !isGameOver else { return }
@@ -444,8 +450,8 @@ class Tiles: SKScene {
                 if boxSpawnCooldown <= 0 {
                     var selectedLanes: [Int] = []
                     
-                                          if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
-//                    if totalElapsedTime - lastAllLaneSpawnTime >= 10 && !isWallSpawned {
+                                        if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
+//                      if totalElapsedTime - lastAllLaneSpawnTime >= 10 && !isWallSpawned {
                         selectedLanes = [0, 1, 2, 3]
                         lastAllLaneSpawnTime = totalElapsedTime
                         isWallSpawned = true
@@ -661,6 +667,8 @@ class Tiles: SKScene {
     }
     
     private func gameOver() {
+        backgroundMusicPlayer?.stop()
+
         isWallSpawned = false
         isGameOver = true
         timer?.invalidate()
@@ -710,14 +718,14 @@ class Tiles: SKScene {
         }
         
         if let url = Bundle.main.url(forResource: "GameOverSong", withExtension: "mp3") {
-                    do {
-                        gameOverAudioPlayer = try AVAudioPlayer(contentsOf: url)
-                        gameOverAudioPlayer?.numberOfLoops = 0
-                        gameOverAudioPlayer?.play()
-                    } catch {
-                        print("Error")
-                    }
-                }
+                      do {
+                          gameOverAudioPlayer = try AVAudioPlayer(contentsOf: url)
+                          gameOverAudioPlayer?.numberOfLoops = 0
+                          gameOverAudioPlayer?.play()
+                      } catch {
+                          print("Error")
+                      }
+                  }
         
     }
     
@@ -819,6 +827,10 @@ class Tiles: SKScene {
     
     
     func endMouth() {
+        // --- PERUBAHAN DI SINI ---
+        // Memutar suara jumpscare acak untuk tabrakan terakhir.
+        playRandomJumpscareSound()
+        
         mouthBack?.removeAllActions()
         mouthBack?.removeFromParent()
         mouthFront?.removeAction(forKey: "mouthNodeFrontAnimation")
@@ -868,18 +880,22 @@ class Tiles: SKScene {
     
     private func blinkToFire() {
         
-        if let url = Bundle.main.url(forResource: "shoot", withExtension: "mp3") {
-                do {
-                    shootingAudioPlayer = try AVAudioPlayer(contentsOf: url)
-                    shootingAudioPlayer?.play()
-                    shootingAudioPlayer?.volume = 10.0
-                } catch {
-                    print("Error")
-                }
-            }
-        
-        
+        // Kondisi dicek TERLEBIH DAHULU. Jika tidak ada dinding (isWallSpawned = false),
+        // fungsi akan berhenti di sini dan tidak akan memutar suara.
         guard isWallSpawned, let character = character else { return }
+        
+        // Suara "shoot" sekarang dimainkan di sini.
+        // Kode ini hanya akan berjalan jika kondisi di atas terpenuhi.
+        if let url = Bundle.main.url(forResource: "shoot", withExtension: "mp3") {
+            do {
+                shootingAudioPlayer = try AVAudioPlayer(contentsOf: url)
+                shootingAudioPlayer?.play()
+                shootingAudioPlayer?.volume = 10.0
+            } catch {
+                print("Error")
+            }
+        }
+        
         wall.alpha = 1.0
         let startY = character.position.y + character.size.height
         let laneIndex = currentLane
@@ -1017,9 +1033,11 @@ extension Tiles: GameDelegate {
                     isNodDetected = true
                     nodTogether(true)
                     DispatchQueue.main.async {
+                        
+                        self.stopGameOverAudio()
                         self.shouldStartGame = false
                     }
-         
+            
                 }
             }
         }

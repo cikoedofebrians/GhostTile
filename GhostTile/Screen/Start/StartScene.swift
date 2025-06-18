@@ -1,19 +1,11 @@
-//
-//  Untitled.swift
-//  GhostTile
-//
-//  Created by Ciko Edo Febrian on 14/06/25.
-//
-
 import SpriteKit
 import SwiftUI
 import AVFoundation
 
 class StartScene: SKScene {
-    
+   
     private var backgroundMusicPlayer: AVAudioPlayer?
-    
-    var onCountDownComplete: (() ->Void)?
+    var onCountDownComplete: (() -> Void)?
     let numberOfLanes = 4
     let baseHeight: CGFloat = 100
     let laneWidth: CGFloat = 160.0
@@ -25,16 +17,16 @@ class StartScene: SKScene {
     var characterLaneIndex: Int = 0
     var currentBoxY: CGFloat = 0
     var character: SKSpriteNode? = nil
-    var gameStarted =  false
+    var gameStarted = false
     var titleNode: SKSpriteNode?
     var nodeOrderNode: SKSpriteNode?
     private var isPlayerOneReady = false
     private var isPlayerTwoReady = false
     private var hasPlayedPlayerOneDetectedOnce = false
     private var hasPlayedPlayerTwoDetectedOnce = false
-    
     private var statusTextNode: SKSpriteNode?
     
+    private var playerCount: Int = 0
     
     private var blackOpacityBackground: SKSpriteNode = {
         let node = SKSpriteNode(color: .black, size: .zero)
@@ -44,7 +36,6 @@ class StartScene: SKScene {
         node.position = CGPoint(x: 0, y: 0)
         return node
     }()
-    
     
     let background: SKSpriteNode = {
         let background = SKSpriteNode()
@@ -65,7 +56,7 @@ class StartScene: SKScene {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override func didMove(to view: SKView){
+    override func didMove(to view: SKView) {
         setupPerspectiveLines()
         setupCharacter()
         setupTitle()
@@ -76,13 +67,10 @@ class StartScene: SKScene {
         setupStatusText()
     }
     
-   
     private func setupStatusText() {
-        
-        let statusNode = SKSpriteNode(imageNamed: "notready")
+        let statusNode = SKSpriteNode(imageNamed: "NotReady")
         statusNode.zPosition = 2
         statusNode.setScale(1.0)
-        
         
         if let orderNode = self.nodeOrderNode {
             statusNode.position = CGPoint(x: size.width / 2, y: orderNode.position.y + orderNode.size.height / 2 - 200)
@@ -94,45 +82,59 @@ class StartScene: SKScene {
         self.statusTextNode = statusNode
     }
     
-    
-    private func updateStatusText(for playerCount: Int) {
+    private func updateStatusText() {
         guard let statusNode = statusTextNode else { return }
         
-        let newTexture: SKTexture
+        var textureName: String
         
-        switch playerCount {
+        let nodCount = (isPlayerOneReady ? 1 : 0) + (isPlayerTwoReady ? 1 : 0)
+        
+        switch self.playerCount {
         case 0:
-            newTexture = SKTexture(imageNamed: "notready")
+            textureName = "NotReady"
         case 1:
-            newTexture = SKTexture(imageNamed: "oneplayer")
+            if nodCount == 0 {
+                textureName = "OneReady"
+            } else {
+                textureName = "OneDetected"
+            }
         case 2:
-            newTexture = SKTexture(imageNamed: "bothready")
+            switch nodCount {
+            case 0:
+                textureName = "BothReady"
+            case 1:
+                textureName = "OneDetected"
+            case 2:
+                textureName = "BothDetected"
+            default:
+                textureName = "BothReady"
+            }
         default:
-            return
+            textureName = "NotReady"
         }
+        
+        let newTexture = SKTexture(imageNamed: textureName)
         
         if statusNode.texture?.hash != newTexture.hash {
             statusNode.texture = newTexture
         }
     }
     
-    
     func playBackgroundMusic() {
-            
-            guard let url = Bundle.main.url(forResource: "start-song", withExtension: "mp3") else {
-                print("Error: File audio tidak ditemukan.")
-                return
-            }
-            
-            do {
-                backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
-                backgroundMusicPlayer?.numberOfLoops = -1
-                backgroundMusicPlayer?.prepareToPlay()
-                backgroundMusicPlayer?.play()
-            } catch {
-                print("Error: Tidak bisa memutar file audio - \(error.localizedDescription)")
-            }
+        guard let url = Bundle.main.url(forResource: "start-song", withExtension: "mp3") else {
+            print("Error: File audio tidak ditemukan.")
+            return
         }
+        
+        do {
+            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+            backgroundMusicPlayer?.numberOfLoops = -1
+            backgroundMusicPlayer?.prepareToPlay()
+            backgroundMusicPlayer?.play()
+        } catch {
+            print("Error: Tidak bisa memutar file audio - \(error.localizedDescription)")
+        }
+    }
     
     func setupBackground() {
         background.size = CGSize(width: size.width, height: size.height)
@@ -142,7 +144,6 @@ class StartScene: SKScene {
         addChild(background)
         addChild(blackOpacityBackground)
     }
-    
     
     private func setupCharacter() {
         let char = SKSpriteNode()
@@ -154,20 +155,27 @@ class StartScene: SKScene {
         StartIdleAnimation()
         addChild(char)
     }
-    
+   
     func updateCharacterAnimation(for playerCount: Int) {
-            guard !gameStarted else { return }
-            if playerCount == 0 {
-                self.StartIdleAnimation()
-                hasPlayedPlayerOneDetectedOnce = false
-                hasPlayedPlayerTwoDetectedOnce = false
-            } else if playerCount == 1 {
-                self.StartPlayerOneDetected()
-                hasPlayedPlayerTwoDetectedOnce = false
-            } else if playerCount == 2 {
-                self.StartPlayerTwoDetected()
-            }
+        guard !gameStarted else { return }
+        
+        self.playerCount = playerCount
+        
+        if playerCount == 0 {
+            self.StartIdleAnimation()
+            hasPlayedPlayerOneDetectedOnce = false
+            hasPlayedPlayerTwoDetectedOnce = false
+            isPlayerOneReady = false
+            isPlayerTwoReady = false
+        } else if playerCount == 1 {
+            self.StartPlayerOneDetected()
+            hasPlayedPlayerTwoDetectedOnce = false
+        } else if playerCount == 2 {
+            self.StartPlayerTwoDetected()
         }
+        
+        updateStatusText()
+    }
     
     private func setupTitle() {
         let title = SKSpriteNode(imageNamed: "GhostTiles")
@@ -190,25 +198,19 @@ class StartScene: SKScene {
         mouthNodeFront.position = CGPoint(x: size.width / 2, y: y)
         addChild(mouthNodeFront)
         
-        
         let mouthNodeBack = SKSpriteNode(imageNamed: "1_mouth_top")
         let mouthNodeBackTextures = (1...8).map { SKTexture(imageNamed: "\($0)_mouth_top") }
-        let mouthNodeBackAnimation  = SKAction.animate(with: mouthNodeBackTextures, timePerFrame: 0.2)
+        let mouthNodeBackAnimation = SKAction.animate(with: mouthNodeBackTextures, timePerFrame: 0.2)
         mouthNodeBack.run(SKAction.repeatForever(mouthNodeBackAnimation))
         mouthNodeBack.zPosition = -5
         mouthNodeBack.setScale(0.6)
-        
         mouthNodeBack.position = CGPoint(x: size.width / 2, y: y)
-        
         addChild(mouthNodeBack)
-        
     }
     
-    
-    private func startCountdownThenGame(){
+    private func startCountdownThenGame() {
         titleNode?.removeFromParent()
         nodeOrderNode?.removeFromParent()
-        
         statusTextNode?.removeFromParent()
         
         let countdownNumbers = ["Countdown-3", "Countdown-2", "Countdown-1"]
@@ -218,7 +220,7 @@ class StartScene: SKScene {
             let sprite = SKSpriteNode(imageNamed: countdownNumbers[i])
             sprite.position = CGPoint(x: size.width / 2, y: size.height / 2)
             sprite.zPosition = 5
-            sprite.alpha = 0 // Start invisible
+            sprite.alpha = 0 
             countdownSprites.append(sprite)
             addChild(sprite)
         }
@@ -238,10 +240,21 @@ class StartScene: SKScene {
         run(SKAction.sequence([
             SKAction.wait(forDuration: totalDuration),
             SKAction.run { [weak self] in
+                self?.stopBackgroundMusic()
                 self?.onCountDownComplete?()
             }
         ]))
+    }
+    
+    func stopBackgroundMusic() {
+        guard let player = backgroundMusicPlayer, player.isPlaying else { return }
         
+        player.setVolume(0, fadeDuration: 0.5)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            player.stop()
+            self.backgroundMusicPlayer = nil
+        }
     }
     
     private func setupPerspectiveLines() {
@@ -276,7 +289,6 @@ class StartScene: SKScene {
         
         let frameRange: [Int]
         
-        
         switch animationName.lowercased() {
         case "startidle":
             frameRange = Array(1...4)
@@ -290,7 +302,6 @@ class StartScene: SKScene {
         }
         
         let textures = frameRange.map { SKTexture(imageNamed: "Start-\($0)") }
-        
         let animation = SKAction.animate(with: textures, timePerFrame: 0.1)
         let sequence = SKAction.sequence([animation, animation.reversed()])
         character.run(SKAction.repeatForever(sequence), withKey: "startAnimation")
@@ -302,11 +313,11 @@ class StartScene: SKScene {
         
         let introFrames = (5...9).map { SKTexture(imageNamed: "Start-\($0)") }
         let loopFrames = (6...9).map { SKTexture(imageNamed: "Start-\($0)") }
-
+        
         let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
         let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
         let loopForever = SKAction.repeatForever(loopAction)
-
+        
         let sequence = SKAction.sequence([introAction, loopForever])
         character.run(sequence, withKey: "startAnimation")
     }
@@ -317,11 +328,11 @@ class StartScene: SKScene {
         
         let introFrames = (13...17).map { SKTexture(imageNamed: "Start-\($0)") }
         let loopFrames = (15...17).map { SKTexture(imageNamed: "Start-\($0)") }
-
+        
         let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
         let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
         let loopForever = SKAction.repeatForever(loopAction)
-
+        
         let sequence = SKAction.sequence([introAction, loopForever])
         character.run(sequence, withKey: "startAnimation")
     }
@@ -332,11 +343,11 @@ class StartScene: SKScene {
         
         let introFrames = (21...24).map { SKTexture(imageNamed: "Start-\($0)") }
         let loopFrames = (22...24).map { SKTexture(imageNamed: "Start-\($0)") }
-
+        
         let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
         let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
         let loopForever = SKAction.repeatForever(loopAction)
-
+        
         let sequence = SKAction.sequence([introAction, loopForever])
         character.run(sequence, withKey: "startAnimation")
     }
@@ -347,19 +358,27 @@ class StartScene: SKScene {
         
         let introFrames = (25...28).map { SKTexture(imageNamed: "Start-\($0)") }
         let loopFrames = (26...28).map { SKTexture(imageNamed: "Start-\($0)") }
-
+        
         let introAction = SKAction.animate(with: introFrames, timePerFrame: 0.1)
         let loopAction = SKAction.animate(with: loopFrames, timePerFrame: 0.1)
         let loopForever = SKAction.repeatForever(loopAction)
-
+        
         let sequence = SKAction.sequence([introAction, loopForever])
         character.run(sequence, withKey: "startAnimation")
     }
+    
+    private func checkIfBothPlayersReady() {
+        guard isPlayerOneReady && isPlayerTwoReady && !gameStarted else { return }
 
-    private func checkIfBothPlayersReady(){
-        if(isPlayerOneReady && isPlayerTwoReady){
-            startGameIfBothReady()
+        let waitAction = SKAction.wait(forDuration: 2.0)
+    
+        let startAction = SKAction.run { [weak self] in
+            self?.startGameIfBothReady()
         }
+        
+        let sequence = SKAction.sequence([waitAction, startAction])
+        
+        self.run(sequence)
     }
     
     func StartIdleAnimation() {
@@ -367,12 +386,13 @@ class StartScene: SKScene {
     }
     
     func StartPlayerOneDetected() {
-            playPlayerOneDetectedIntroThenLoop()
+        playPlayerOneDetectedIntroThenLoop()
     }
     
     func StartPlayerOneReady() {
         playPlayerOneReadyIntroThenLoop()
         isPlayerOneReady = true
+        updateStatusText()
         checkIfBothPlayersReady()
     }
     
@@ -382,16 +402,15 @@ class StartScene: SKScene {
             hasPlayedPlayerTwoDetectedOnce = true
         }
     }
-    
+
     func StartPlayerTwoReady() {
         playPlayerTwoReadyIntroThenLoop()
         isPlayerTwoReady = true
+        updateStatusText()
         checkIfBothPlayersReady()
     }
     
     func idleAnimation() {
         playAnimation(named: "idle")
     }
-    
 }
-
