@@ -115,14 +115,20 @@ class StartScene: SKScene {
     private func setupMouths() {
         let y = size.height - size.height / 3 - 280
         
-        let mouthNodeFront = SKSpriteNode(imageNamed: "bottom_mouth")
+        let mouthNodeFront = SKSpriteNode(imageNamed: "1_bottom_mouth")
+        let mouthNodeFrontTextures = (1...8).map { SKTexture(imageNamed: "\($0)_bottom_mouth") }
+        let mouthNodeFrontAnimation = SKAction.animate(with: mouthNodeFrontTextures, timePerFrame: 0.2)
+        mouthNodeFront.run(SKAction.repeatForever(mouthNodeFrontAnimation))
         mouthNodeFront.zPosition = -20
         mouthNodeFront.setScale(0.6)
         mouthNodeFront.position = CGPoint(x: size.width / 2, y: y)
         addChild(mouthNodeFront)
         
         
-        let mouthNodeBack = SKSpriteNode(imageNamed: "top_mouth")
+        let mouthNodeBack = SKSpriteNode(imageNamed: "1_mouth_top")
+        let mouthNodeBackTextures = (1...8).map { SKTexture(imageNamed: "\($0)_mouth_top") }
+        let mouthNodeBackAnimation  = SKAction.animate(with: mouthNodeBackTextures, timePerFrame: 0.2)
+        mouthNodeBack.run(SKAction.repeatForever(mouthNodeBackAnimation))
         mouthNodeBack.zPosition = -5
         mouthNodeBack.setScale(0.6)
         

@@ -214,7 +214,7 @@ class CameraManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Obs
                 DispatchQueue.main.async {
                     for (index, _) in blinkStates.enumerated() {
                         if blinkStates[index] != self.previousEyeStates[index] && blinkStates[index] {
-                            print("Blink detected from index \(index)")
+//                            print("Blink detected from index \(index)")
                             self.delegate?.blinkDetected()
                         }
                     }

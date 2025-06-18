@@ -19,7 +19,7 @@ import SpriteKit
 struct StartGameView: View {
     @StateObject var cameraManager: CameraManager = CameraManager()
     @State var startScene = StartScene()
-    @State private var shouldStartGame = false {
+    @State private var shouldStartGame = true {
         didSet {
             if shouldStartGame {
                 startScene = StartScene()

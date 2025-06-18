@@ -76,17 +76,18 @@ class Tiles: SKScene {
     var restartLabel: SKLabelNode?
     
     
-    var health: Int = 1 {
-        didSet {
-            if health <= 0 {
-                let waitAction = SKAction.wait(forDuration: 1.0)
-                let gameOverAction = SKAction.run { [weak self] in
-                    self?.gameOver()
-                }
-                self.run(SKAction.sequence([waitAction, gameOverAction]))
-            }
-        }
-    }
+    var health: Int = 3
+//    {
+//        didSet {
+//            if health <= 0 {
+//                let waitAction = SKAction.wait(forDuration: 0.6)
+//                let gameOverAction = SKAction.run { [weak self] in
+//                    self?.gameOver()
+//                }
+//                self.run(SKAction.sequence([waitAction, gameOverAction]))
+//            }
+//        }
+//    }
     
     func setupBackgroundMusic() {
         
@@ -208,14 +209,6 @@ class Tiles: SKScene {
     
     
     override func didMove(to view: SKView) {
-        // Debug: Print all available fonts
-        for family in UIFont.familyNames {
-            print("Family: \(family)")
-            for name in UIFont.fontNames(forFamilyName: family) {
-                print("Font: \(name)")
-            }
-        }
-        
         cameraManager.delegate = self
         setupBackground()
         setupPerspectiveLines()
@@ -230,29 +223,6 @@ class Tiles: SKScene {
         view.addGestureRecognizer(tap)
     }
     
-    func shootBullet() {
-        //        if bulletTimer == nil && isWallSpawned {
-        //            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] timer in
-        //                print("\(timer)")
-        //                guard let self = self else { return }
-        //                if !isWallSpawned {
-        //                    timer.invalidate()
-        //                    bulletTimer = nil
-        //                    return
-        //                }
-        //                guard let character = character else { return }
-        //                let bullet = SKSpriteNode(color: .red, size: CGSize(width: 10, height: 20))
-        //                bullet.anchorPoint = CGPoint(x: 0.5, y: 0.0)
-        //                bullet.position = CGPoint(x: character.position.x + character.size.width / 2, y: character.position.y + character.size.height / 2)
-        //                addChild(bullet)
-        //                let moveAction = SKAction.moveTo(y: size.height - size.height / 3, duration: 1.0)
-        //                bullet.run(moveAction) {
-        //                    bullet.removeFromParent()
-        //                }
-        //            }
-        //        }
-    }
-    
     func showBlinkEffect() {
         if !hasBlinked {
             DispatchQueue.main.async {
@@ -263,6 +233,7 @@ class Tiles: SKScene {
                 SKAction.fadeAlpha(to: 1.0, duration: 0.1),
                 SKAction.fadeAlpha(to: 0.0, duration: 0.1),
             ])
+            
             let repeatedBlinkAction = SKAction.repeat(blinkAction, count: 4)
             let fullAction = SKAction.sequence([
                 repeatedBlinkAction,
@@ -289,6 +260,15 @@ class Tiles: SKScene {
         
         return scale
     }
+    
+    func characterCrashed(_ currentTime: TimeInterval) {
+        health -= 1
+        handleCharacterCrash()
+        advanceMouthStage()
+        isInCollisionCooldown = true
+        lastCollisionTime = currentTime
+    }
+    
     override func update(_ currentTime: TimeInterval) {
         guard !isGameOver else { return }
         
@@ -450,11 +430,7 @@ class Tiles: SKScene {
                             let yOverlap = characterFrame.intersection(boxFrame).height
                             
                             if yOverlap >= collisionThreshold && !isInCollisionCooldown {
-                                health -= 1
-                                advanceMouthStage()
-                                handleCharacterCrash()
-                                isInCollisionCooldown = true
-                                lastCollisionTime = currentTime
+                                characterCrashed(currentTime)
                                 break
                             }
                         }
@@ -463,15 +439,12 @@ class Tiles: SKScene {
                 else if activeBoxes.isEmpty && isWallSpawned {
                     let yOverlap = character.frame.intersection(wall.frame).height
                     if yOverlap >= collisionThreshold && !isInCollisionCooldown {
-                        health -= 1
-                        handleCharacterCrash()
-                        isInCollisionCooldown = true
-                        lastCollisionTime = currentTime
+                        characterCrashed(currentTime)
                     }
                     
                 }
                 
-                if isInCollisionCooldown && currentTime - lastCollisionTime >  max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration)  + 0.5{
+                if isInCollisionCooldown && currentTime - lastCollisionTime >  max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration) + 1 {
                     isInCollisionCooldown = false
                 }
             }
@@ -494,7 +467,9 @@ class Tiles: SKScene {
                 SKAction.fadeAlpha(to: 0.0, duration: 0.25),
                 SKAction.fadeAlpha(to: 1.0, duration: 0.25)
             ])
-            let repeatBlink = SKAction.repeat(blink, count: 4)
+            
+            let count = Int(max(minBoxSpawnRate, boxSpawnRate - spawnAcceleration)) * 2 + 2
+            let repeatBlink = SKAction.repeat(blink, count: count)
             character.run(repeatBlink)
         }
     }
@@ -525,11 +500,6 @@ class Tiles: SKScene {
         moveCharacter(to: 0, animated: false)
         addChild(char)
     }
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        
-    }
-    
     
     private func moveCharacter(to laneIndex: Int, animated: Bool = true) {
         guard let character = character else { return }
@@ -590,7 +560,7 @@ class Tiles: SKScene {
         
         // Text nyuruh nod
         let label = SKLabelNode(fontNamed: "NightscaryFreeTrial")
-        label.text = "NOD YOUR HEAD TO RESTART"
+        label.text = "NOD YOUR HEAD TO PLAY AGAIN"
         label.fontSize = 40
         label.fontColor = .white
         label.position = CGPoint(x: size.width / 2, y: size.height * 0.3 - finalScoreValueLabel.frame.height - finalScoreLabel.frame.height - label.frame.height - 32)
@@ -631,6 +601,7 @@ class Tiles: SKScene {
         let sequence = SKAction.sequence([animation, animation.reversed()])
         character.run(SKAction.repeatForever(sequence))
         
+        
         character.removeAction(forKey: "run")
         character.run(SKAction.repeatForever(sequence), withKey: "run")
     }
@@ -639,7 +610,9 @@ class Tiles: SKScene {
     private func setupMouths() {
         let y = size.height - size.height / 3 - 280
         
-        let mouthNodeFront = SKSpriteNode(imageNamed: "bottom_mouth")
+        let mouthNodeFront = SKSpriteNode(imageNamed: "1_bottom_mouth")
+        let mouthNodeFrontTextures = (1...8).map { SKTexture(imageNamed: "\($0)_bottom_mouth") }
+        mouthNodeFront.run(SKAction.repeatForever(SKAction.animate(with: mouthNodeFrontTextures, timePerFrame: 0.2)), withKey: "mouthNodeFrontAnimation")
         mouthNodeFront.zPosition = -10
         mouthNodeFront.setScale(0.6)
         mouthNodeFront.position = CGPoint(x: size.width / 2, y: y)
@@ -647,7 +620,10 @@ class Tiles: SKScene {
         mouthFront = mouthNodeFront
         
         
-        let mouthNodeBack = SKSpriteNode(imageNamed: "top_mouth")
+        let mouthNodeBack = SKSpriteNode(imageNamed: "1_mouth_top")
+        let mouthNodeBackTextures = (1...8).map { SKTexture(imageNamed: "\($0)_mouth_top") }
+        mouthNodeBack.run(SKAction.repeatForever(SKAction.animate(with: mouthNodeBackTextures, timePerFrame: 0.2)), withKey: "mouthNodeBackAnimation")
+
         mouthNodeBack.zPosition = 10
         mouthNodeBack.setScale(0.6)
         
@@ -675,17 +651,43 @@ class Tiles: SKScene {
             yOffset = -550
         case 0:
             scale = 1.4
-            yOffset = -700
+            yOffset = -650
         default:
             scale = 0.6
             yOffset = -280
         }
         
         let newY = size.height - size.height / 3 + yOffset
-        let move = SKAction.move(to: CGPoint(x: size.width / 2, y: newY), duration: 0.2)
-        let resize = SKAction.scale(to: scale, duration: 0.2)
+        let move = SKAction.move(to: CGPoint(x: size.width / 2, y: newY), duration: 0.3)
+        let resize = SKAction.scale(to: scale, duration: 0.3)
         mouthFront.run(SKAction.group([move, resize]))
-        mouthBack.run(SKAction.group([move, resize]))
+        if health <= 0 {
+            endMouth()
+        } else {
+            mouthBack.run(SKAction.group([move, resize]))
+        }
+    }
+    
+    
+    func endMouth() {
+        mouthBack?.removeAllActions()
+        mouthBack?.removeFromParent()
+        mouthFront?.removeAction(forKey: "mouthNodeFrontAnimation")
+        let mouthEndTextures = (1...6).map { SKTexture(imageNamed: "\($0)_mouth_end") }
+        let mouthEndAnimation = SKAction.animate(with: mouthEndTextures, timePerFrame: 0.1)
+        let mouthEndSequence = SKAction.sequence([
+            mouthEndAnimation,
+            SKAction.run {
+                self.gameOver()
+            }])
+        
+        mouthFront?.run(mouthEndSequence)
+        
+        for lane in lanes {
+            lane.removeFromParent()
+        }
+        wall.removeFromParent()
+        character?.removeFromParent()
     }
     
     private func setupCrashOverlay() {
@@ -837,8 +839,6 @@ extension Tiles: GameDelegate {
     func sendNods(firstNod: Double, secondNod: Double, nodTogether: (Bool) -> Void) {
         guard isGameOver else { return }
         let nods = [firstNod, secondNod]
-
-        print(nods)
         if isGameOver  {
             if initialNods.count < 2 {
                 initialNods = nods
