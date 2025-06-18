@@ -31,6 +31,8 @@ class StartScene: SKScene {
     private var isPlayerOneReady = false
     private var isPlayerTwoReady = false
     
+    private var statusTextNode: SKSpriteNode?
+    
     
     private var blackOpacityBackground: SKSpriteNode = {
         let node = SKSpriteNode(color: .black, size: .zero)
@@ -66,11 +68,52 @@ class StartScene: SKScene {
         setupCharacter()
         setupTitle()
         setupMouths()
-        setupNodeOrder()
         setupBackground()
         
         playBackgroundMusic()
+        setupStatusText()
     }
+    
+   
+    private func setupStatusText() {
+        
+        let statusNode = SKSpriteNode(imageNamed: "notready")
+        statusNode.zPosition = 2
+        statusNode.setScale(1.0)
+        
+        
+        if let orderNode = self.nodeOrderNode {
+            statusNode.position = CGPoint(x: size.width / 2, y: orderNode.position.y + orderNode.size.height / 2 - 200)
+        } else {
+            statusNode.position = CGPoint(x: size.width / 2, y: size.height / 2 - 200)
+        }
+        
+        addChild(statusNode)
+        self.statusTextNode = statusNode
+    }
+    
+    
+    private func updateStatusText(for playerCount: Int) {
+        guard let statusNode = statusTextNode else { return }
+        
+        let newTexture: SKTexture
+        
+        switch playerCount {
+        case 0:
+            newTexture = SKTexture(imageNamed: "notready")
+        case 1:
+            newTexture = SKTexture(imageNamed: "oneplayer")
+        case 2:
+            newTexture = SKTexture(imageNamed: "bothready")
+        default:
+            return
+        }
+        
+        if statusNode.texture?.hash != newTexture.hash {
+            statusNode.texture = newTexture
+        }
+    }
+    
     
     func playBackgroundMusic() {
             
@@ -112,6 +155,8 @@ class StartScene: SKScene {
     
     func updateCharacterAnimation(for playerCount: Int) {
         guard !gameStarted else { return }
+        
+        updateStatusText(for: playerCount)
         if playerCount == 0 {
             self.StartIdleAnimation()
         } else if playerCount == 1 {
@@ -154,18 +199,12 @@ class StartScene: SKScene {
         
     }
     
-    private func setupNodeOrder() {
-        let nodeOrder = SKSpriteNode(imageNamed: "StartNodeOrder")
-        nodeOrder.zPosition = 1
-        nodeOrder.setScale(1.5)
-        nodeOrder.position = CGPoint(x: size.width / 2, y: size.height / 2 - 200)
-        addChild(nodeOrder)
-        self.nodeOrderNode = nodeOrder
-    }
     
     private func startCountdownThenGame(){
         titleNode?.removeFromParent()
         nodeOrderNode?.removeFromParent()
+        
+        statusTextNode?.removeFromParent()
         
         let countdownNumbers = ["Countdown-3", "Countdown-2", "Countdown-1"]
         var countdownSprites: [SKSpriteNode] = []
@@ -297,3 +336,55 @@ class StartScene: SKScene {
     }
     
 }
+
+#if DEBUG
+import SwiftUI
+
+// Helper View untuk membuat preview interaktif untuk StartScene
+struct StartScenePreviewWrapper: View {
+    
+    // Buat satu instance dari StartScene agar bisa diakses
+    let scene: StartScene
+    
+    // State untuk menyimpan jumlah pemain yang disimulasikan
+    @State private var simulatedPlayerCount = 0
+    
+    init() {
+        self.scene = StartScene()
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            // SpriteView adalah cara SwiftUI untuk menampilkan SKScene
+            SpriteView(scene: scene, options: [.allowsTransparency])
+                .ignoresSafeArea()
+            
+           
+                
+                
+                
+        }
+        .onAppear {
+            // Atur closure onCountDownComplete agar tidak crash di preview
+            // dan berikan feedback di console.
+            scene.onCountDownComplete = {
+                print("PREVIEW: Countdown Selesai, game akan dimulai.")
+            }
+            // Update scene ke kondisi awal (0 pemain)
+            scene.updateCharacterAnimation(for: 0)
+        }
+        // Setiap kali picker diubah, panggil fungsi di scene
+        .onChange(of: simulatedPlayerCount) { newCount in
+            scene.updateCharacterAnimation(for: newCount)
+        }
+    }
+}
+
+// Blok #Preview untuk menampilkan wrapper di canvas Xcode
+#Preview {
+    StartScenePreviewWrapper()
+        .previewDevice("iPhone 14 Pro")
+       
+}
+
+#endif

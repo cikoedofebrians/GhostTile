@@ -12,6 +12,7 @@ import AVKit
 
 class Tiles: SKScene {
     
+    // sound effect
     var gameOverAudioPlayer: AVAudioPlayer?
     var backgroundMusicPlayer: AVAudioPlayer?
     var shootingAudioPlayer: AVAudioPlayer?
@@ -82,6 +83,14 @@ class Tiles: SKScene {
     let randomJumpscareImages: [String] = ["jumpscare", "jumpscare2", "jumpscare3", "jumpscare4"]
     var restartLabel: SKLabelNode?
     
+    // blink tutorial overlay
+    private var blinkTutorialOverlay: SKSpriteNode?
+    private var hasShownBlinkTutorial = false
+    // head tilt tutorial overlay
+    private var headTiltTutorialOverlay: SKSpriteNode?
+    private var hasShownHeadTiltTutorial = false
+    
+    var isGameplayPaused = false
     
     var health: Int = 3 {
         didSet {
@@ -95,22 +104,105 @@ class Tiles: SKScene {
         }
     }
     
+    
+    // blink overlay
+    private func setupBlinkTutorialOverlay() {
+        let overlayNode = SKSpriteNode(imageNamed: "blinkmelek")
+        overlayNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlayNode.zPosition = 1500
+        overlayNode.alpha = 0.0
+        overlayNode.setScale(1.0)
+        
+        self.blinkTutorialOverlay = overlayNode
+        addChild(overlayNode)
+    }
+    
+    private func showBlinkTutorial() {
+        guard !hasShownBlinkTutorial, let overlay = blinkTutorialOverlay else { return }
+
+        hasShownBlinkTutorial = true
+        
+        let texture1 = SKTexture(imageNamed: "blinkmelek")
+        let texture2 = SKTexture(imageNamed: "blinkmerem")
+        
+        let animation = SKAction.animate(with: [texture1, texture2], timePerFrame: 0.4)
+        let repeatAnimation = SKAction.repeat(animation, count: 5)
+        
+        
+        let fadeIn = SKAction.fadeIn(withDuration: 0.5)
+        let wait = SKAction.wait(forDuration: 1.6)
+        let fadeOut = SKAction.fadeOut(withDuration: 0.5)
+        
+        let pauseAction = SKAction.run { self.isGameplayPaused = true }
+        let unpauseAction = SKAction.run { self.isGameplayPaused = false }
+        
+        let fullSequence = SKAction.sequence([
+            pauseAction,
+            fadeIn,
+            SKAction.group([repeatAnimation, wait]),
+            fadeOut,
+            unpauseAction
+        ])
+        
+        overlay.run(fullSequence)
+    }
+    
+    // head tilt overlay
+    private func setupHeadTiltTutorialOverlay() {
+        
+        let overlayNode = SKSpriteNode(imageNamed: "head_tilt_1")
+        overlayNode.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlayNode.zPosition = 1500
+        overlayNode.alpha = 1.0
+        overlayNode.setScale(3.0)
+
+        self.headTiltTutorialOverlay = overlayNode
+        addChild(overlayNode)
+    }
+    
+    private func showHeadTiltTutorialAnimation() {
+        guard !hasShownHeadTiltTutorial, let overlay = headTiltTutorialOverlay else { return }
+
+        hasShownHeadTiltTutorial = true
+        self.isGameplayPaused = true
+
+        let texture1 = SKTexture(imageNamed: "tilt-left")
+        let texture2 = SKTexture(imageNamed: "tilt-right")
+
+        let visualAnimation = SKAction.animate(with: [texture1, texture2], timePerFrame: 0.5)
+        let repeatVisualAnimation = SKAction.repeatForever(visualAnimation)
+
+
+        let waitAction = SKAction.wait(forDuration: 1.6)
+        let fadeOutAction = SKAction.fadeOut(withDuration: 0.5)
+        let removeAction = SKAction.removeFromParent()
+        let unpauseAction = SKAction.run { self.isGameplayPaused = false }
+        let lifetimeSequence = SKAction.sequence([waitAction, fadeOutAction, unpauseAction, removeAction])
+
+
+        overlay.run(repeatVisualAnimation)
+        overlay.run(lifetimeSequence)
+    }
+    
+    
+    
+    
     func setupBackgroundMusic() {
             
-            guard let url = Bundle.main.url(forResource: "run-song", withExtension: "mp3") else {
-                print("Error")
-                return
-            }
-            
-            do {
-                backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
-                backgroundMusicPlayer?.numberOfLoops = -1
-                backgroundMusicPlayer?.prepareToPlay()
-                backgroundMusicPlayer?.play()
-            } catch {
-                print("Error")
-            }
+        guard let url = Bundle.main.url(forResource: "run-song", withExtension: "mp3") else {
+            print("Error")
+            return
         }
+            
+        do {
+            backgroundMusicPlayer = try AVAudioPlayer(contentsOf: url)
+            backgroundMusicPlayer?.numberOfLoops = -1
+            backgroundMusicPlayer?.prepareToPlay()
+            backgroundMusicPlayer?.play()
+        } catch {
+            print("Error")
+        }
+    }
     
     let background: SKSpriteNode = {
         let background = SKSpriteNode()
@@ -236,33 +328,37 @@ class Tiles: SKScene {
         setupScore()
         setupAcceleration()
         setupCrashOverlay()
+        
         setupBackgroundMusic()
+        setupBlinkTutorialOverlay()
+        setupHeadTiltTutorialOverlay()
+        showHeadTiltTutorialAnimation()
         
         let tap = UITapGestureRecognizer(target: view, action: #selector(view.handleMouthTap(_:)))
         view.addGestureRecognizer(tap)
     }
     
     func shootBullet() {
-        //        if bulletTimer == nil && isWallSpawned {
-        //            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] timer in
-        //                print("\(timer)")
-        //                guard let self = self else { return }
-        //                if !isWallSpawned {
-        //                    timer.invalidate()
-        //                    bulletTimer = nil
-        //                    return
-        //                }
-        //                guard let character = character else { return }
-        //                let bullet = SKSpriteNode(color: .red, size: CGSize(width: 10, height: 20))
-        //                bullet.anchorPoint = CGPoint(x: 0.5, y: 0.0)
-        //                bullet.position = CGPoint(x: character.position.x + character.size.width / 2, y: character.position.y + character.size.height / 2)
-        //                addChild(bullet)
-        //                let moveAction = SKAction.moveTo(y: size.height - size.height / 3, duration: 1.0)
-        //                bullet.run(moveAction) {
-        //                    bullet.removeFromParent()
-        //                }
-        //            }
-        //        }
+        //          if bulletTimer == nil && isWallSpawned {
+        //              timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: false) { [weak self] timer in
+        //                  print("\(timer)")
+        //                  guard let self = self else { return }
+        //                  if !isWallSpawned {
+        //                      timer.invalidate()
+        //                      bulletTimer = nil
+        //                      return
+        //                  }
+        //                  guard let character = character else { return }
+        //                  let bullet = SKSpriteNode(color: .red, size: CGSize(width: 10, height: 20))
+        //                  bullet.anchorPoint = CGPoint(x: 0.5, y: 0.0)
+        //                  bullet.position = CGPoint(x: character.position.x + character.size.width / 2, y: character.position.y + character.size.height / 2)
+        //                  addChild(bullet)
+        //                  let moveAction = SKAction.moveTo(y: size.height - size.height / 3, duration: 1.0)
+        //                  bullet.run(moveAction) {
+        //                      bullet.removeFromParent()
+        //                  }
+        //              }
+        //          }
     }
     
     func showBlinkEffect() {
@@ -302,6 +398,7 @@ class Tiles: SKScene {
         return scale
     }
     override func update(_ currentTime: TimeInterval) {
+        if isGameplayPaused { return }
         guard !isGameOver else { return }
         
         if lanes.count > 1 {
@@ -355,7 +452,7 @@ class Tiles: SKScene {
                 if boxSpawnCooldown <= 0 {
                     var selectedLanes: [Int] = []
                     
-                    //                    if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
+                    //                      if totalElapsedTime - lastAllLaneSpawnTime >= CGFloat.random(in: 10...20) && !isWallSpawned {
                     if totalElapsedTime - lastAllLaneSpawnTime >= 10 && !isWallSpawned {
                         selectedLanes = [0, 1, 2, 3]
                         lastAllLaneSpawnTime = totalElapsedTime
@@ -369,6 +466,8 @@ class Tiles: SKScene {
                         wall.size = sizeBox
                         wall.position = CGPoint(x: widthX1 + width / 2, y: y)
                         addChild(wall)
+                        
+                        showBlinkTutorial()
                         
                     } else  if !isWallSpawned {
                         let numberOfLanesToCover = Int.random(in: 1...3)
@@ -514,28 +613,28 @@ class Tiles: SKScene {
     }
     
     private func playRandomJumpscareSound() {
-           
-            guard let soundName = randomJumpscareSounds.randomElement() else {
-                print("Gak iso")
-                return
-            }
-            
-          
-            guard let url = Bundle.main.url(forResource: soundName, withExtension: "mp3") else {
-                print("Error")
-                return
-            }
-            
         
-            do {
-                jumpscareAudioPlayer = try AVAudioPlayer(contentsOf: url)
-                jumpscareAudioPlayer?.numberOfLoops = 0
-                jumpscareAudioPlayer?.volume = 10.0
-                jumpscareAudioPlayer?.play()
-            } catch {
-                print("Error")
-            }
+        guard let soundName = randomJumpscareSounds.randomElement() else {
+            print("Gak iso")
+            return
         }
+        
+        
+        guard let url = Bundle.main.url(forResource: soundName, withExtension: "mp3") else {
+            print("Error")
+            return
+        }
+        
+        
+        do {
+            jumpscareAudioPlayer = try AVAudioPlayer(contentsOf: url)
+            jumpscareAudioPlayer?.numberOfLoops = 0
+            jumpscareAudioPlayer?.volume = 10.0
+            jumpscareAudioPlayer?.play()
+        } catch {
+            print("Error")
+        }
+    }
     
     private func showJumpscare(imageName: String) {
         guard let overlay = crashOverlay else { return }
@@ -544,10 +643,16 @@ class Tiles: SKScene {
         
         overlay.removeAllActions()
         overlay.alpha = 0
+        
+        let pauseAction = SKAction.run { self.isGameplayPaused = true }
+        let unpauseAction = SKAction.run { self.isGameplayPaused = false }
+        
         overlay.run(SKAction.sequence([
+            pauseAction,
             SKAction.fadeAlpha(to: 1.0, duration: 0.1),
             SKAction.wait(forDuration: 0.5),
-            SKAction.fadeAlpha(to: 0.0, duration: 0.5)
+            SKAction.fadeAlpha(to: 0.0, duration: 0.5),
+            unpauseAction
         ]))
     }
     
@@ -764,7 +869,7 @@ class Tiles: SKScene {
                     print("Error")
                 }
             }
-            
+        
         
         guard isWallSpawned, let character = character else { return }
         wall.alpha = 1.0
@@ -944,6 +1049,3 @@ extension SKView {
 #Preview(body: {
     TilesView(shouldStartGame: .constant(true), cameraManager: CameraManager())
 })
-
-
-
