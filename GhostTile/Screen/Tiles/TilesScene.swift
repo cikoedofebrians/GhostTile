@@ -827,8 +827,7 @@ class Tiles: SKScene {
     
     
     func endMouth() {
-        // --- PERUBAHAN DI SINI ---
-        // Memutar suara jumpscare acak untuk tabrakan terakhir.
+        
         playRandomJumpscareSound()
         
         mouthBack?.removeAllActions()
@@ -880,12 +879,9 @@ class Tiles: SKScene {
     
     private func blinkToFire() {
         
-        // Kondisi dicek TERLEBIH DAHULU. Jika tidak ada dinding (isWallSpawned = false),
-        // fungsi akan berhenti di sini dan tidak akan memutar suara.
         guard isWallSpawned, let character = character else { return }
         
-        // Suara "shoot" sekarang dimainkan di sini.
-        // Kode ini hanya akan berjalan jika kondisi di atas terpenuhi.
+        
         if let url = Bundle.main.url(forResource: "shoot", withExtension: "mp3") {
             do {
                 shootingAudioPlayer = try AVAudioPlayer(contentsOf: url)
