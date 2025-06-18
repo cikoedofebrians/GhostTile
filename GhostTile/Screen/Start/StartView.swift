@@ -19,13 +19,15 @@ import SpriteKit
 struct StartGameView: View {
     @StateObject var cameraManager: CameraManager = CameraManager()
     @State var startScene = StartScene()
-    @State private var shouldStartGame = true {
+    
+    @State private var shouldStartGame = false {
         didSet {
             if shouldStartGame {
                 startScene = StartScene()
             }
         }
     }
+    
     
     
     
@@ -52,11 +54,11 @@ struct StartGameView: View {
                     if newValue.count == 2 {
                         let playerOneNodded = newValue[0]
                         let playerTwoNodded = newValue[1]
-                        if  playerOneNodded {
-                            startScene.StartPlayerOneReady()
-                        }
-                        if playerTwoNodded {
+                        
+                        if playerTwoNodded && playerOneNodded {
                             startScene.StartPlayerTwoReady()
+                        } else if playerOneNodded || playerTwoNodded {
+                            startScene.StartPlayerOneReady()
                         }
                     }
                 }
